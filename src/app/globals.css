@@ -1,0 +1,192 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+  }
+
+  * {
+    @apply border-netflix-gray/20;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-netflix-black text-netflix-white antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Netflix-style scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-netflix-dark;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-netflix-gray/50 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-netflix-gray;
+  }
+
+  ::-webkit-scrollbar-corner {
+    @apply bg-netflix-dark;
+  }
+
+  /* Focus styles */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-netflix-red ring-offset-2 ring-offset-netflix-black;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-netflix-red/30 text-netflix-white;
+  }
+}
+
+@layer components {
+  /* Netflix Button Variants */
+  .btn-netflix {
+    @apply px-6 py-2.5 text-base font-semibold rounded-2xl transition-all duration-200
+           focus:scale-[0.98] active:scale-[0.96]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn-netflix bg-netflix-red text-netflix-white
+           hover:bg-netflix-redHover hover:shadow-[0_0_20px_rgba(229,9,20,0.5)]
+           shadow-lg shadow-netflix-red/30;
+  }
+
+  .btn-secondary {
+    @apply btn-netflix bg-netflix-card text-netflix-white
+           hover:bg-netflix-cardHover hover:shadow-card-hover
+           border border-netflix-gray/20;
+  }
+
+  .btn-ghost {
+    @apply btn-netflix bg-transparent text-netflix-white
+           hover:bg-netflix-gray/20;
+  }
+
+  /* Netflix Card */
+  .card-netflix {
+    @apply relative bg-netflix-card rounded-xl overflow-hidden
+           transition-all duration-300 ease-out
+           hover:scale-105 hover:z-10 hover:shadow-netflix-lg
+           cursor-pointer;
+  }
+
+  .card-netflix img {
+    @apply w-full h-full object-cover transition-opacity duration-300;
+  }
+
+  .card-netflix:hover img {
+    @apply opacity-90;
+  }
+
+  /* Row Container */
+  .row-container {
+    @apply px-6 pb-10;
+  }
+
+  .row-title {
+    @apply text-xl font-bold text-netflix-white mb-4 tracking-tight;
+  }
+
+  .row-wrapper {
+    @apply flex gap-4 overflow-x-auto scrollbar-hide pb-4 -mx-6 px-6;
+  }
+
+  /* Hero Section */
+  .hero-gradient {
+    @apply absolute inset-0 bg-hero-gradient z-0;
+  }
+
+  .hero-content {
+    @apply relative z-10 max-w-5xl mx-auto px-6 pt-32 pb-20;
+  }
+
+  /* Input Styles */
+  .input-netflix {
+    @apply w-full px-4 py-3 bg-netflix-card border border-netflix-gray/30
+           rounded-lg text-netflix-white placeholder-netflix-gray
+           focus:border-netflix-red focus:ring-2 focus:ring-netflix-red/20
+           transition-all duration-200;
+  }
+
+  /* Profile Avatar */
+  .profile-avatar {
+    @apply w-12 h-12 rounded-lg border-4 border-transparent
+           transition-all duration-200 cursor-pointer
+           hover:border-netflix-red hover:scale-105;
+  }
+
+  .profile-avatar.active {
+    @apply border-netflix-red;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .glass {
+    @apply bg-netflix-dark/80 backdrop-blur-xl border border-netflix-gray/10;
+  }
+
+  .glass-strong {
+    @apply bg-netflix-dark/95 backdrop-blur-2xl border border-netflix-gray/20;
+  }
+}
+
+/* Netflix Sans font fallback - using system fonts that closely match */
+@layer base {
+  @font-face {
+    font-family: 'Netflix Sans';
+    src: local('Helvetica Neue'), local('Helvetica'), local('Arial');
+    font-weight: 400;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Netflix Sans';
+    src: local('Helvetica Neue Bold'), local('Helvetica Bold'), local('Arial Bold');
+    font-weight: 700;
+    font-display: swap;
+  }
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
