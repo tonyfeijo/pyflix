@@ -346,7 +346,6 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
                     aria-label="Siguiente episodio"
                   >
                     <SkipForward className="w-5 h-5" />
-                    <SkipForward className="w-5 h-5 ml-1" />
                   </button>
                 </div>
 
