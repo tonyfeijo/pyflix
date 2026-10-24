@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Menu, X, Bell, User, ChevronDown, Home, Tv, Film, Sparkles, ListFilter, Settings } from 'lucide-react';
+import { Search, Menu, X, Bell, User, ChevronDown, Home, Tv, Film, Sparkles, ListFilter, Settings, RefreshCw } from 'lucide-react';
 import { mockProfiles, type UserProfile } from '@/lib/mock-data';
+import { SyncModal } from '@/components/content/SyncModal';
 import { cn } from '@/lib/utils';
 
 export function Header() {
@@ -13,6 +14,7 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentProfile, setCurrentProfile] = useState<UserProfile>(mockProfiles[0]);

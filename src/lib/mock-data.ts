@@ -439,36 +439,54 @@ export const mockMedia: MediaItem[] = [
 ];
 
 // Helper functions
+export function getCustomSyncedMovies(): MediaItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem('pyflix_synced_movies');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getAllMedia(): MediaItem[] {
+  const synced = getCustomSyncedMovies();
+  if (!synced || synced.length === 0) return mockMedia;
+  const existingIds = new Set(mockMedia.map(m => m.id));
+  const newItems = synced.filter(s => !existingIds.has(s.id));
+  return [...newItems, ...mockMedia];
+}
+
 export function getMediaById(id: string): MediaItem | undefined {
-  return mockMedia.find(item => item.id === id);
+  return getAllMedia().find(item => item.id === id);
 }
 
 export function getMediaByType(type: 'movie' | 'series'): MediaItem[] {
-  return mockMedia.filter(item => item.type === type);
+  return getAllMedia().filter(item => item.type === type);
 }
 
 export function getTrendingMedia(): MediaItem[] {
-  return mockMedia.filter(item => item.isTrending);
+  return getAllMedia().filter(item => item.isTrending);
 }
 
 export function getNewReleases(): MediaItem[] {
-  return mockMedia.filter(item => item.isNew);
+  return getAllMedia().filter(item => item.isNew);
 }
 
 export function getTopRated(): MediaItem[] {
-  return [...mockMedia].sort((a, b) => (b.match || 0) - (a.match || 0));
+  return [...getAllMedia()].sort((a, b) => (b.match || 0) - (a.match || 0));
 }
 
 export function getTop10(): MediaItem[] {
-  return mockMedia.slice(0, 10);
+  return getAllMedia().slice(0, 10);
 }
 
 export function getContinueWatching(profileId: string): MediaItem[] {
-  return mockMedia.slice(0, 5).map(item => ({ ...item, match: 90 + Math.floor(Math.random() * 10) }));
+  return getAllMedia().slice(0, 5).map(item => ({ ...item, match: 90 + Math.floor(Math.random() * 10) }));
 }
 
 export function getMyList(): MediaItem[] {
-  return mockMedia.slice(4, 12);
+  return getAllMedia().slice(4, 12);
 }
 
 export function getCategories(): Category[] {
@@ -477,17 +495,19 @@ export function getCategories(): Category[] {
     'Drama', 'Fantasía', 'Terror', 'Misterio', 'Ciencia Ficción', 'Thriller'
   ];
 
+  const all = getAllMedia();
   return genres.map(genre => ({
     id: genre.toLowerCase().replace(' ', '-'),
     name: genre,
-    items: mockMedia.filter(item => item.genre.includes(genre)),
+    items: all.filter(item => item.genre.includes(genre)),
   })).filter(cat => cat.items.length > 0);
 }
 
 export function searchMedia(query: string): MediaItem[] {
-  if (!query || !query.trim()) return mockMedia;
+  const all = getAllMedia();
+  if (!query || !query.trim()) return all;
   const lowerQuery = query.toLowerCase().trim();
-  return mockMedia.filter(item =>
+  return all.filter(item =>
     item.title.toLowerCase().includes(lowerQuery) ||
     item.genre.some(g => g.toLowerCase().includes(lowerQuery)) ||
     item.cast?.some(c => c.toLowerCase().includes(lowerQuery)) ||
