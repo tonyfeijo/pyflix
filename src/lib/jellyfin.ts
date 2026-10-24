@@ -10,9 +10,18 @@ export interface JellyfinConfig {
  * Nunca uses NEXT_PUBLIC_* aquí: la API key no debe llegar al navegador.
  */
 export function getJellyfinConfig(): JellyfinConfig | null {
-  const url = findJellyfinUrl();
-  const apiKey = findJellyfinApiKey();
+  let url = findJellyfinUrl();
+  let apiKey = findJellyfinApiKey();
   if (!url || !apiKey) return null;
+
+  const isUrl = (value: string) => /^https?:\/\//i.test(value);
+
+  // Recuperación automática: si los dos valores se guardaron cruzados
+  // (URL en el campo de la clave y viceversa), los intercambiamos.
+  if (!isUrl(url) && isUrl(apiKey)) {
+    [url, apiKey] = [apiKey, url];
+  }
+
   // Sin esta validación, una URL mal guardada produce errores crípticos del tipo
   // "Failed to parse URL from <valor>".
   if (!/^https?:\/\/[^\s]+$/i.test(url)) return null;
@@ -25,6 +34,8 @@ export interface JellyfinDiagnostics {
   hasApiKey: boolean;
   /** true si JELLYFIN_URL parece contener la API key (valores cruzados). */
   urlLooksLikeApiKey: boolean;
+  /** true si la URL está en el campo de la clave y la clave en el de la URL. */
+  valuesSwapped: boolean;
   envNames: string[];
 }
 
@@ -32,11 +43,13 @@ export function jellyfinDiagnostics(): JellyfinDiagnostics {
   const rawUrl = findJellyfinUrl();
   const apiKey = findJellyfinApiKey();
   const urlValid = Boolean(rawUrl && /^https?:\/\/[^\s]+$/i.test(rawUrl));
+  const keyIsUrl = Boolean(apiKey && /^https?:\/\/[^\s]+$/i.test(apiKey));
   return {
     hasUrl: Boolean(rawUrl),
     urlValid,
     hasApiKey: Boolean(apiKey),
     urlLooksLikeApiKey: Boolean(rawUrl && !urlValid && /^[a-f0-9]{24,}$/i.test(rawUrl)),
+    valuesSwapped: Boolean(rawUrl && !urlValid && keyIsUrl),
     envNames: jellyfinEnvNames(),
   };
 }
