@@ -152,6 +152,59 @@ Esos títulos no se mezclan con las filas de películas y series.
 Y activa **«Actualizar biblioteca en tiempo real»** en cada una (Panel →
 Bibliotecas → cada biblioteca), para que detecte archivos nuevos al instante.
 
+---
+
+## 6.1. Cómo organizar las carpetas
+
+La [guía de medios de Jellyfin](https://jellyfin.org/docs/general/server/media/movies)
+pide **una carpeta por título**, con el año entre paréntesis, y que el archivo
+se llame igual que su carpeta. PyFlix muestra lo que Jellyfin entiende, así que
+la estructura de `E:\tony\server pyflix` debe ser esta:
+
+```
+server pyflix
+├── PELICULAS
+│   └── RoboCop (1987)
+│       ├── RoboCop (1987).mp4
+│       ├── poster.jpg
+│       ├── backdrop.jpg
+│       └── logo.png
+├── SERIES
+│   └── X-Men (1992)
+│       ├── poster.jpg
+│       ├── Season 01
+│       │   └── X-Men (1992) - S01E01 - Título.mp4
+│       └── Season 02
+│           └── X-Men (1992) - S02E01 - Título.mp4
+├── DOCUMENTALES
+│   └── Título (Año)
+│       └── Título (Año).mp4
+├── VIDEO CLIPS
+│   └── Mi clip.mp4
+└── CORTOS NACIONALES
+    └── Mi corto (2026)
+        └── Mi corto (2026).mp4
+```
+
+Reglas que aplica Jellyfin:
+
+- **Películas / documentales / cortos**: `Título (Año)/Título (Año).ext`. El año
+  y el nombre exacto ayudan a que la ficha se descargue bien.
+- **Series**: `Serie (Año)/Season NN/Serie (Año) - SxxEyy - Título.ext`. Las
+  carpetas de género (`ANIME`, `SERIES ANIMADAS`, `ACCIÓN`…) **no** se usan: si
+  existen, Jellyfin cree que son series o temporadas y pierde los episodios.
+- **Imágenes**: dentro de cada carpeta, con nombre fijo `poster.jpg`,
+  `backdrop.jpg` (puede haber `backdrop1.jpg`, `backdrop2.jpg`…) y `logo.png`.
+- **Versiones duplicadas** del mismo título: mismo prefijo + etiqueta, por
+  ejemplo `RoboCop 2 (1990) - MKV.mkv` y `RoboCop 2 (1990).mp4`.
+- **Extras**: dentro de `extras/`, `trailers/`, `clips/`… de la carpeta del
+  título; no se mezclan con la fila principal.
+- Caracteres prohibidos en nombres: `< > : " / \ | ? *`.
+
+Los archivos con otra extensión (`.rar`, `.torrent`, etc.) se ignoran: puedes
+dejarlos o moverlos fuera de las carpetas de bibliotecas.
+
+
 > Si una serie aparece con **0 episodios**, refresca esa serie:
 > Panel → Bibliotecas → ⋯ → *Actualizar metadatos* (o `POST /Items/{id}/Refresh`).
 > Es lo que pasa cuando los episodios se importaron con la biblioteca mal tipada.
