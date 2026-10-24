@@ -10,6 +10,8 @@ interface TMDBMovieMetadata {
   genres: string[];
   rating: string;
   duration: string;
+  cast?: string[];
+  director?: string;
 }
 
 /**
@@ -64,7 +66,9 @@ export async function getMovieMetadataFromTMDB(query: string, year?: string | nu
       voteAverage: movie.vote_average,
       genres: ['Clásico', 'Cine'], // Garantiza el arreglo para route.ts
       rating: movie.adult ? '18+' : '13+',
-      duration: '1h 30m'
+      duration: '1h 30m',
+      cast: ['Actores varios'],
+      director: 'Director Desconocido'
     };
   } catch (error) {
     console.error('Error al consultar TMDB:', error);
