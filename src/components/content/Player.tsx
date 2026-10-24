@@ -6,7 +6,7 @@ import {
   Play, Pause, Volume2, VolumeX, Volume1,
   SkipBack, SkipForward, Fullscreen, Minimize,
   Settings, X, ChevronDown, ChevronUp, Subtitles,
-  PictureInPicture2, RotateCcw, Clock
+  PictureInPicture2, RotateCcw, RotateCw, Clock
 } from 'lucide-react';
 import type { MediaItem, Episode } from '@/lib/types';
 import { cn, formatDuration } from '@/lib/utils';
@@ -311,17 +311,17 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
                 {/* Left controls */}
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={onPreviousEpisode}
-                    disabled={!onPreviousEpisode}
-                    className="p-2 rounded-lg text-netflix-white hover:bg-netflix-card transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    aria-label="Episodio anterior"
+                    onClick={() => videoRef.current && (videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10))}
+                    className="p-2 rounded-lg text-netflix-white hover:bg-netflix-card transition-colors"
+                    aria-label="Retroceder 10 segundos"
                   >
                     <RotateCcw className="w-5 h-5" />
                   </button>
                   <button
-                    onClick={() => videoRef.current && (videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10))}
-                    className="p-2 rounded-lg text-netflix-white hover:bg-netflix-card transition-colors"
-                    aria-label="Retroceder 10 segundos"
+                    onClick={onPreviousEpisode}
+                    disabled={!onPreviousEpisode}
+                    className="p-2 rounded-lg text-netflix-white hover:bg-netflix-card transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Episodio anterior"
                   >
                     <SkipBack className="w-5 h-5" />
                   </button>
@@ -333,19 +333,19 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
                     {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
                   </button>
                   <button
-                    onClick={() => videoRef.current && (videoRef.current.currentTime = Math.min(duration, videoRef.current.currentTime + 10))}
-                    className="p-2 rounded-lg text-netflix-white hover:bg-netflix-card transition-colors"
-                    aria-label="Adelantar 10 segundos"
-                  >
-                    <SkipForward className="w-5 h-5" />
-                  </button>
-                  <button
                     onClick={onNextEpisode}
                     disabled={!onNextEpisode}
                     className="p-2 rounded-lg text-netflix-white hover:bg-netflix-card transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     aria-label="Siguiente episodio"
                   >
                     <SkipForward className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => videoRef.current && (videoRef.current.currentTime = Math.min(duration, videoRef.current.currentTime + 10))}
+                    className="p-2 rounded-lg text-netflix-white hover:bg-netflix-card transition-colors"
+                    aria-label="Adelantar 10 segundos"
+                  >
+                    <RotateCw className="w-5 h-5" />
                   </button>
                 </div>
 
