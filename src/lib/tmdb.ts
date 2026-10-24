@@ -50,6 +50,9 @@ export async function getMovieMetadataFromTMDB(query: string, year?: string | nu
       backdropPath: getTmdbImageUrl(movie.backdrop_path, 'w1280'),
       releaseDate: movie.release_date,
       voteAverage: movie.vote_average,
+      genres: ['Clásico', 'Cine'], // Garantiza el arreglo para route.ts
+      rating: movie.adult ? '18+' : '13+',
+      duration: '1h 30m'
     };
   } catch (error) {
     console.error('Error al consultar TMDB:', error);
