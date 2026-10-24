@@ -135,9 +135,14 @@ export function mapJellyfinItem(
   const directors = people.filter((p) => p.Type === 'Director').map((p) => p.Name);
   const score = item.CommunityRating ? Math.min(99, Math.round(item.CommunityRating * 10)) : undefined;
 
-  const seasons = item.ChildCount ?? 0;
+  const seasons = episodes?.length
+    ? new Set(episodes.map((episode) => episode.season)).size
+    : item.ChildCount ?? 0;
+
   const duration = isSeries
-    ? `${seasons} Temporada${seasons === 1 ? '' : 's'}`
+    ? seasons > 0
+      ? `${seasons} Temporada${seasons === 1 ? '' : 's'}`
+      : 'Serie'
     : formatRuntime(item.RunTimeTicks);
 
   return {
