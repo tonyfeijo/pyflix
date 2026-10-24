@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import AutoJellyfinSync from '@/components/AutoJellyfinSync';
 import './globals.css';
 
 const inter = Inter({
@@ -66,6 +67,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://image.tmdb.org" />
       </head>
       <body className="bg-netflix-black text-netflix-white min-h-screen">
+        <AutoJellyfinSync />
         {children}
       </body>
     </html>

@@ -109,6 +109,46 @@ Con `npm run dev`, el servidor local sí puede alcanzar tu Jellyfin de la red lo
 3. Elige **Importar desde Jellyfin**.
 4. El catálogo se guarda en el navegador (`localStorage`) y aparece en la home.
 
+### Actualización automática (ya no hace falta pulsar nada)
+
+`AutoJellyfinSync` (montado en `src/app/layout.tsx`) hace una consulta
+baratísima a `GET /api/jellyfin/sync` al abrir la web. Ese endpoint devuelve una
+**firma** del catálogo: `número de títulos:fecha del último añadido`.
+
+- Si la firma coincide con la guardada, no hace nada.
+- Si cambió (añadiste o borraste algo), reimporta en silencio, sustituye el
+  catálogo de Jellyfin y recarga. Un aviso discreto abajo a la derecha lo indica.
+- Se salta las páginas `/watch` para no cortar una reproducción.
+- Solo se comprueba una vez por sesión de navegador (`sessionStorage`).
+
+La importación **pagina** de 200 en 200 hasta el final (`JELLYFIN_PAGE_SIZE`
+permite cambiarlo), así que ya no hay tope de 300 títulos.
+
+Al reimportar se **reemplazan** los títulos con id `jf-`: si borras una película
+en Jellyfin, desaparece también de PyFlix (antes se acumulaban para siempre).
+
+---
+
+## 6. Bibliotecas de Jellyfin (importante)
+
+Cada biblioteca debe tener su **tipo correcto**. Si todo se mete en una sola
+biblioteca "mixta" (o de tipo *Vídeos musicales*) apuntando a la carpeta raíz,
+Jellyfin no encuentra los episodios y los mete como películas sueltas.
+
+| Biblioteca | Tipo | Carpeta |
+|---|---|---|
+| Películas | `movies` | `PELICULAS` |
+| Series | `tvshows` | `SERIES` |
+| Documentales | `movies` | `DOCUMENTALES` |
+| Vídeos caseros | `homevideos` | `VIDEO CLIPS` |
+
+Y activa **«Actualizar biblioteca en tiempo real»** en cada una (Panel →
+Bibliotecas → cada biblioteca), para que detecte archivos nuevos al instante.
+
+> Si una serie aparece con **0 episodios**, refresca esa serie:
+> Panel → Bibliotecas → ⋯ → *Actualizar metadatos* (o `POST /Items/{id}/Refresh`).
+> Es lo que pasa cuando los episodios se importaron con la biblioteca mal tipada.
+
 ---
 
 ## Cómo funciona
@@ -136,4 +176,6 @@ Con `npm run dev`, el servidor local sí puede alcanzar tu Jellyfin de la red lo
 | `Falta configurar Jellyfin` | Faltan las variables de entorno o no hiciste Redeploy. |
 | `No se pudo conectar con Jellyfin` | `JELLYFIN_URL` no es accesible desde internet o no es HTTPS. |
 | Carátulas en gris | El proxy no llega a Jellyfin; revisa la URL y la API key. |
+| Una serie sale con 0 episodios | La biblioteca estaba mal tipada al escanear; refresca esa serie (ver sección 6). |
+| Los títulos nuevos no aparecen | La firma del catálogo no cambió o el navegador tiene la comprobación hecha en esta sesión; recarga o usa Sync. |
 | El video no reproduce | Códec no soportado por el navegador (p. ej. MKV/H.265). Jellyfin puede transcodificar si lo habilitas. |

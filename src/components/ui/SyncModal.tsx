@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { saveSyncedMovies, setSyncedSignature } from '@/lib/synced-catalog';
 
 interface SyncModalProps {
   isOpen: boolean;
@@ -9,39 +10,6 @@ interface SyncModalProps {
 }
 
 type SyncSource = 'archive' | 'jellyfin';
-
-const STORAGE_KEY = 'pyflix_synced_movies';
-
-/**
- * Guarda el catálogo sincronizado en localStorage sin duplicar por id.
- */
-function saveSyncedMovies(incoming: unknown) {
-  if (!Array.isArray(incoming) || incoming.length === 0) return;
-
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const current = raw ? JSON.parse(raw) : [];
-    const byId = new Map<string, unknown>();
-
-    if (Array.isArray(current)) {
-      for (const item of current) {
-        if (item && typeof item === 'object' && 'id' in item) {
-          byId.set(String((item as { id: unknown }).id), item);
-        }
-      }
-    }
-
-    for (const item of incoming) {
-      if (item && typeof item === 'object' && 'id' in item) {
-        byId.set(String((item as { id: unknown }).id), item);
-      }
-    }
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...byId.values()]));
-  } catch (error) {
-    console.error('No se pudo guardar el catálogo sincronizado:', error);
-  }
-}
 
 export default function SyncModal({ isOpen, onClose, onSuccess }: SyncModalProps) {
   const [loading, setLoading] = useState<SyncSource | null>(null);
@@ -60,7 +28,12 @@ export default function SyncModal({ isOpen, onClose, onSuccess }: SyncModalProps
       const data = await response.json();
 
       if (data.success) {
-        saveSyncedMovies(data.movies);
+        // Jellyfin reemplaza el catálogo importado (respeta borrados);
+        // Internet Archive se fusiona por id.
+        saveSyncedMovies(data.movies, source === 'jellyfin' ? 'replace' : 'merge');
+        if (source === 'jellyfin' && data.signature) {
+          setSyncedSignature(data.signature);
+        }
         setMessage(`¡Listo! Se importaron ${data.count} títulos.`);
         if (onSuccess) onSuccess();
 
@@ -95,8 +68,8 @@ export default function SyncModal({ isOpen, onClose, onSuccess }: SyncModalProps
             <h3 className="font-semibold mb-1">Jellyfin</h3>
             <p className="text-sm text-zinc-400 mb-3">
               Importa tus películas y series con carátulas, sinopsis y reproducción
-              dentro de PyFlix. Requiere <code>JELLYFIN_URL</code> y{' '}
-              <code>JELLYFIN_API_KEY</code> configuradas en Vercel.
+              dentro de PyFlix. Se actualiza solo al abrir la web cuando añades
+              contenido nuevo al servidor.
             </p>
             <button
               type="button"

@@ -124,6 +124,8 @@ export interface JellyfinItem {
   ImageTags?: Record<string, string>;
   BackdropImageTags?: string[];
   People?: Array<{ Name: string; Type: string }>;
+  /** Fecha de alta en Jellyfin: se usa para detectar catálogo nuevo. */
+  DateCreated?: string;
 }
 
 export interface JellyfinItemsResponse {
@@ -142,6 +144,7 @@ export const JELLYFIN_FIELDS = [
   'ChildCount',
   'ImageTags',
   'BackdropImageTags',
+  'DateCreated',
 ].join(',');
 
 /** Petición autenticada a la API de Jellyfin (lado servidor). */
