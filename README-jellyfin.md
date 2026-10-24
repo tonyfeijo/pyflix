@@ -62,6 +62,33 @@ En **Vercel → tu proyecto → Settings → Environment Variables**, añade:
 
 Marca los tres entornos (Production, Preview, Development) y haz **Redeploy**.
 
+> **Importante:** si cambias una variable, los despliegues ya creados **no** la reciben.
+> Hay que desplegar de nuevo (Redeploy, o un push nuevo a `main`).
+
+La URL pública de este proyecto (Tailscale Funnel) está como valor por defecto en
+`src/lib/jellyfin.ts` (`DEFAULT_JELLYFIN_URL`), así que `JELLYFIN_URL` es opcional:
+si no existe, se usa esa. Solo `JELLYFIN_API_KEY` es obligatoria.
+
+### Cómo saber qué falta exactamente
+
+`POST /api/jellyfin/sync` devuelve un diagnóstico con **nombres** de variables
+(nunca valores), el commit desplegado y qué falla:
+
+```json
+{
+  "message": "Falta configurar Jellyfin. Variable(s) sin definir: JELLYFIN_API_KEY...",
+  "missing": ["JELLYFIN_API_KEY"],
+  "hasUrl": false,
+  "usingDefaultUrl": true,
+  "hasApiKey": false,
+  "envNames": ["JELLYFIN_URL"],
+  "vercelEnv": "production",
+  "commit": "141f8cc"
+}
+```
+
+Si `commit` no coincide con tu último commit, el despliegue está desactualizado.
+
 ### Prueba local (opcional)
 
 Crea `.env.local` en la raíz del proyecto:
