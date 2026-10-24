@@ -8,8 +8,9 @@ import {
   setSyncedSignature,
 } from '@/lib/synced-catalog';
 
-/** Evita repetir la comprobación varias veces en la misma sesión del navegador. */
-const SESSION_FLAG = 'pyflix_jellyfin_checked';
+/** Como mucho una comprobación por minuto (evita repetirla al navegar). */
+const CHECK_INTERVAL_MS = 60_000;
+const LAST_CHECK_KEY = 'pyflix_jellyfin_last_check';
 
 type Status = 'idle' | 'checking' | 'syncing' | 'error';
 
@@ -27,10 +28,11 @@ export default function AutoJellyfinSync() {
     if (pathname?.startsWith('/watch')) return;
 
     try {
-      if (sessionStorage.getItem(SESSION_FLAG)) return;
-      sessionStorage.setItem(SESSION_FLAG, '1');
+      const last = Number(sessionStorage.getItem(LAST_CHECK_KEY) ?? 0);
+      if (Date.now() - last < CHECK_INTERVAL_MS) return;
+      sessionStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
     } catch {
-      /* sessionStorage bloqueado: seguimos igualmente */
+      /* sessionStorage bloqueado: comprobamos igualmente */
     }
 
     let cancelled = false;

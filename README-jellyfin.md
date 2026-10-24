@@ -119,7 +119,8 @@ baratísima a `GET /api/jellyfin/sync` al abrir la web. Ese endpoint devuelve un
 - Si cambió (añadiste o borraste algo), reimporta en silencio, sustituye el
   catálogo de Jellyfin y recarga. Un aviso discreto abajo a la derecha lo indica.
 - Se salta las páginas `/watch` para no cortar una reproducción.
-- Solo se comprueba una vez por sesión de navegador (`sessionStorage`).
+- Se comprueba como mucho **una vez por minuto** (así basta recargar para ver
+  contenido nuevo, sin repetir la consulta al navegar entre páginas).
 
 La importación **pagina** de 200 en 200 hasta el final (`JELLYFIN_PAGE_SIZE`
 permite cambiarlo), así que ya no hay tope de 300 títulos.
