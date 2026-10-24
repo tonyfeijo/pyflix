@@ -22,11 +22,21 @@ export async function POST() {
   const config = getJellyfinConfig();
 
   if (!config) {
+    // Diagnóstico: indica exactamente qué variable falta y en qué despliegue estamos.
+    const missing = [
+      process.env.JELLYFIN_URL?.trim() ? null : 'JELLYFIN_URL',
+      process.env.JELLYFIN_API_KEY?.trim() ? null : 'JELLYFIN_API_KEY',
+    ].filter((name): name is string => Boolean(name));
+
     return NextResponse.json(
       {
         success: false,
-        message:
-          'Falta configurar Jellyfin. Agrega JELLYFIN_URL y JELLYFIN_API_KEY en las variables de entorno de Vercel.',
+        message: `Falta configurar Jellyfin. Variable(s) sin definir: ${missing.join(
+          ' y '
+        )}. Añádelas en Vercel → Settings → Environment Variables (Producción) y vuelve a desplegar.`,
+        missing,
+        vercelEnv: process.env.VERCEL_ENV ?? 'local',
+        commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
       },
       { status: 400 }
     );
