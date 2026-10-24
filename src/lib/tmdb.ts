@@ -9,6 +9,7 @@ export function getTmdbImageUrl(
 ): string {
   if (!path) return 'https://via.placeholder.com/500x750?text=No+Poster';
 
+  // Evita duplicaciones de https:// si el path ya trae la URL completa
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
   }
@@ -18,9 +19,9 @@ export function getTmdbImageUrl(
 }
 
 /**
- * Obtiene los metadatos de una película desde la API de TMDB
+ * Obtiene los metadatos de una película desde la API de TMDB (soporta título y año opcional)
  */
-export async function getMovieMetadataFromTMDB(query: string) {
+export async function getMovieMetadataFromTMDB(query: string, year?: string | number) {
   const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY || process.env.TMDB_API_KEY;
 
   if (!apiKey) {
@@ -29,10 +30,12 @@ export async function getMovieMetadataFromTMDB(query: string) {
   }
 
   try {
-    const res = await fetch(
-      `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=es-ES`,
-      { next: { revalidate: 3600 } }
-    );
+    let url = `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=es-ES`;
+    if (year) {
+      url += `&year=${year}`;
+    }
+
+    const res = await fetch(url, { next: { revalidate: 3600 } });
 
     if (!res.ok) return null;
 
