@@ -237,6 +237,23 @@ function HomeContent() {
               />
             )}
 
+            {/* La sección existe desde ya, aunque todavía no haya cortos. */}
+            {cortosNacionales.length === 0 && activeTab === 'all' && featuredItem && (
+              <section
+                aria-label="Cortos nacionales"
+                className="px-4 sm:px-8 md:px-12 pb-8 sm:pb-10"
+              >
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white tracking-tight mb-3">
+                  Cortos nacionales
+                </h2>
+                <div className="rounded-xl border border-dashed border-white/15 bg-neutral-900/40 px-6 py-8 text-sm text-neutral-400">
+                  Todavía no hay cortos. Añade tus archivos a la carpeta{' '}
+                  <strong className="text-neutral-200">CORTOS NACIONALES</strong> del servidor
+                  y aparecerán aquí solos en menos de un minuto.
+                </div>
+              </section>
+            )}
+
             {documentales.length > 0 && activeTab === 'all' && (
               <MovieRow
                 title="Documentales"
