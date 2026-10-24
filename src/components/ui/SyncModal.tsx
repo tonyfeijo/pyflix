@@ -15,7 +15,7 @@ export default function SyncModal({ isOpen, onClose, onSuccess }: SyncModalProps
   if (!isOpen) return null;
 
   const handleSync = async (e: React.MouseEvent) => {
-    e.preventDefault(); // Evita recargas indeseadas
+    e.preventDefault();
     setLoading(true);
     setMessage(null);
 
@@ -37,21 +37,20 @@ export default function SyncModal({ isOpen, onClose, onSuccess }: SyncModalProps
       if (data.success) {
         setMessage(`¡Éxito! Se sincronizaron ${data.count} películas.`);
         if (onSuccess) onSuccess();
-      // Recarga la página después de 1.5 segundos para reflejar los datos
+
         setTimeout(() => {
           window.location.reload();
         }, 1500);
       } else {
         setMessage(`Error: ${data.message || 'No se pudo sincronizar el catálogo.'}`);
       }
-  } catch (error) {
-    console.error('❌ Error en el fetch de sincronización:', error);
-    setMessage('Error de conexión con el servidor.');
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (error) {
+      console.error('❌ Error en el fetch de sincronización:', error);
+      setMessage('Error de conexión con el servidor.');
+    } finally {
+      setLoading(false);
     }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -76,7 +75,7 @@ export default function SyncModal({ isOpen, onClose, onSuccess }: SyncModalProps
           >
             Cancelar
           </button>
-          
+
           <button
             type="button"
             onClick={handleSync}
@@ -90,5 +89,3 @@ export default function SyncModal({ isOpen, onClose, onSuccess }: SyncModalProps
     </div>
   );
 }
-
-
