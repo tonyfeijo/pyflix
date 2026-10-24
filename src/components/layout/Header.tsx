@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Menu, X, Bell, User, ChevronDown, Home, Tv, Film, Sparkles, ListFilter, Settings, RefreshCw } from 'lucide-react';
 import { mockProfiles, type UserProfile } from '@/lib/mock-data';
-import { SyncModal } from '@/components/content/SyncModal';
+import { SyncModal } from '@/components/ui/SyncModal';
 import { cn } from '@/lib/utils';
 
 export function Header() {
@@ -120,6 +120,15 @@ export function Header() {
               </div>
             </form>
 
+            {/* Botón de Sincronización */}
+            <button
+              onClick={() => setShowSyncModal(true)}
+              className="flex items-center gap-1.5 bg-red-600/90 hover:bg-red-600 text-white text-xs font-semibold px-2.5 py-1.5 rounded transition"
+              title="Sincronizar catálogo"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Sync</span>
+            </button>
             {/* Notifications */}
             <button
               className="p-2 rounded-full text-netflix-lightGray hover:text-white hover:bg-white/10 transition-colors relative"
@@ -235,6 +244,12 @@ export function Header() {
             </button>
           </div>
         </nav>
+
+          <SyncModal
+            isOpen={showSyncModal}
+            onClose={() => setShowSyncModal(false)}
+          />
+
       </header>
 
       {/* Mobile Menu Drawer */}
@@ -319,4 +334,3 @@ const [isSyncOpen, setIsSyncOpen] = useState(false);
 </button>
 
 <SyncModal isOpen={isSyncOpen} onClose={() => setIsSyncOpen(false)} />
-  
