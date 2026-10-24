@@ -9,6 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://pyflix-three.vercel.app'),
   title: 'PyFlix - Tu servicio de streaming',
   description: 'Disfruta de las mejores series y películas en PyFlix. Streaming ilimitado, sin anuncios.',
   keywords: ['streaming', 'películas', 'series', 'netflix', 'entretenimiento'],
