@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
   getJellyfinConfig,
+  jellyfinEnvNames,
   jellyfinFetch,
   mapJellyfinItem,
   mapJellyfinEpisode,
@@ -35,6 +36,8 @@ export async function POST() {
           ' y '
         )}. Añádelas en Vercel → Settings → Environment Variables (Producción) y vuelve a desplegar.`,
         missing,
+        /** Solo nombres, nunca valores: sirve para detectar erratas al guardarlas. */
+        jellyfinEnvNames: jellyfinEnvNames(),
         vercelEnv: process.env.VERCEL_ENV ?? 'local',
         commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
       },

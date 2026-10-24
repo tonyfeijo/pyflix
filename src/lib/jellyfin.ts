@@ -10,10 +10,44 @@ export interface JellyfinConfig {
  * Nunca uses NEXT_PUBLIC_* aquí: la API key no debe llegar al navegador.
  */
 export function getJellyfinConfig(): JellyfinConfig | null {
-  const url = process.env.JELLYFIN_URL?.trim();
-  const apiKey = process.env.JELLYFIN_API_KEY?.trim();
+  const url = findJellyfinUrl();
+  const apiKey = findJellyfinApiKey();
   if (!url || !apiKey) return null;
   return { url: url.replace(/\/+$/, ''), apiKey };
+}
+
+/** Nombres de variables relacionadas con Jellyfin presentes (nunca devuelve valores). */
+export function jellyfinEnvNames(): string[] {
+  return Object.keys(process.env).filter((name) => /jellyfin/i.test(name)).sort();
+}
+
+function findJellyfinUrl(): string | undefined {
+  const direct = process.env.JELLYFIN_URL?.trim();
+  if (direct) return direct;
+  const alternative = Object.keys(process.env).find(
+    (name) => /jellyfin/i.test(name) && /(url|host|server)/i.test(name)
+  );
+  return alternative ? process.env[alternative]?.trim() : undefined;
+}
+
+function findJellyfinApiKey(): string | undefined {
+  const direct = process.env.JELLYFIN_API_KEY?.trim();
+  if (direct) return direct;
+
+  // Tolera variantes habituales: JELLYFIN_APIKEY, jellyfin_api_key,
+  // JELLYFIN_TOKEN, JELLYFIN_KEY, "JELLYFIN_API_KEY " (con espacio), etc.
+  const candidates = Object.keys(process.env).filter(
+    (name) =>
+      /jellyfin/i.test(name) &&
+      /(api[_\-\s]?key|apikey|key|token)/i.test(name) &&
+      !/(url|host|server)/i.test(name)
+  );
+
+  for (const name of candidates) {
+    const value = process.env[name]?.trim();
+    if (value) return value;
+  }
+  return undefined;
 }
 
 export interface JellyfinItem {
