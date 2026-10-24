@@ -202,7 +202,7 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
           onDoubleClick={toggleFullscreen}
           playsInline
           autoPlay={autoPlay}
-          src={episode?.videoUrl || media.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'}
+          src={episode?.videoUrl || media.videoUrl || 'https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4'}
         />
         
         {/* Loading placeholder */}

@@ -29,17 +29,17 @@ export const mockProfiles: UserProfile[] = [
 ];
 
 const sampleVideos = {
-  bigBuck: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-  elephants: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-  tears: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-  sintel: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
-  blazes: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-  escapes: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-  fun: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-  joy: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
-  meltdowns: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
-  outback: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackSeeTheWorld.mp4',
-  bullrun: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+  bigBuck: 'https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4',
+  elephants: 'https://archive.org/download/ElephantsDream/ed_1024_512kb.mp4',
+  tears: 'https://archive.org/download/Tears-of-Steel/tears_of_steel_720p.mp4',
+  sintel: 'https://archive.org/download/Sintel/sintel-2048-surround.mp4',
+  blazes: 'https://media.w3.org/2010/05/video/movie_300.mp4',
+  escapes: 'https://media.w3.org/2010/05/bunny/trailer.mp4',
+  fun: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
+  joy: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+  meltdowns: 'https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4',
+  outback: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4',
+  bullrun: 'https://www.w3schools.com/html/mov_bbb.mp4',
 };
 
 export const mockMedia: MediaItem[] = [
