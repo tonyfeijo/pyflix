@@ -9,12 +9,48 @@ export function getTmdbImageUrl(
 ): string {
   if (!path) return 'https://via.placeholder.com/500x750?text=No+Poster';
 
-  // Si la cadena ya viene con el dominio completo, evita duplicados
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
   }
 
-  // Asegura la barra inicial antes del path
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return `${TMDB_IMAGE_BASE}/${size}${cleanPath}`;
+}
+
+/**
+ * Obtiene los metadatos de una película desde la API de TMDB
+ */
+export async function getMovieMetadataFromTMDB(query: string) {
+  const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY || process.env.TMDB_API_KEY;
+
+  if (!apiKey) {
+    console.warn('⚠️ No se encontró la API Key de TMDB');
+    return null;
+  }
+
+  try {
+    const res = await fetch(
+      `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=es-ES`,
+      { next: { revalidate: 3600 } }
+    );
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const movie = data.results?.[0];
+
+    if (!movie) return null;
+
+    return {
+      title: movie.title,
+      overview: movie.overview,
+      posterPath: getTmdbImageUrl(movie.poster_path, 'w500'),
+      backdropPath: getTmdbImageUrl(movie.backdrop_path, 'w1280'),
+      releaseDate: movie.release_date,
+      voteAverage: movie.vote_average,
+    };
+  } catch (error) {
+    console.error('Error al consultar TMDB:', error);
+    return null;
+  }
 }
