@@ -21,7 +21,7 @@ import {
 } from '@/lib/mock-data';
 import { useWatchlist } from '@/lib/watchlist';
 import type { MediaItem, Episode } from '@/lib/types';
-import { Film, Tv, Sparkles, ListFilter, Play } from 'lucide-react';
+import { ListFilter } from 'lucide-react';
 
 function HomeContent() {
   const searchParams = useSearchParams();
@@ -134,43 +134,9 @@ function HomeContent() {
           />
         )}
 
-        {/* Quick Filter Navigation Sub-bar */}
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-8 md:px-12 pt-6 pb-4 flex items-center justify-between border-b border-white/5">
-          <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto scrollbar-hide py-1">
-            {[
-              { id: 'all', label: 'Todos', icon: null, href: '/' },
-              { id: 'series', label: 'Series', icon: Tv, href: '/?type=series' },
-              { id: 'movie', label: 'Películas', icon: Film, href: '/?type=movie' },
-              { id: 'new', label: 'Novedades', icon: Sparkles, href: '/?filter=new' },
-              { id: 'my-list', label: 'Mi lista', icon: ListFilter, href: '/?filter=my-list' },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => router.push(tab.href)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
-                    isActive
-                      ? 'bg-white text-black shadow-lg scale-105'
-                      : 'bg-neutral-900/80 text-neutral-300 hover:text-white hover:bg-neutral-800 border border-white/10'
-                  }`}
-                >
-                  {Icon && <Icon className="w-3.5 h-3.5" />}
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <span className="hidden md:block text-xs text-neutral-400 font-medium">
-            PyFlix Originals &amp; Open Streaming
-          </span>
-        </div>
-
         {/* My List dedicated view if selected */}
         {activeTab === 'my-list' ? (
-          <div className="max-w-[1920px] mx-auto px-4 sm:px-8 md:px-12 pt-28">
+          <div className="max-w-[1920px] mx-auto px-4 sm:px-8 md:px-12 pt-28 md:pt-32 pb-12 min-h-[70vh]">
             <h1 className="text-3xl font-bold mb-6 flex items-center gap-3">
               <span>Mi Lista</span>
               <span className="text-sm font-normal text-neutral-400">
