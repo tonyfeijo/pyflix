@@ -304,3 +304,19 @@ export function Header() {
     </>
   );
 }
+
+import SyncModal from '@/components/ui/SyncModal';
+
+// Dentro de tu componente Header:
+const [isSyncOpen, setIsSyncOpen] = useState(false);
+
+// En el JSX donde están los botones de la derecha:
+<button
+  onClick={() => setIsSyncOpen(true)}
+  className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-xs text-white px-3 py-1.5 rounded transition"
+>
+  🔄 Sincronizar
+</button>
+
+<SyncModal isOpen={isSyncOpen} onClose={() => setIsSyncOpen(false)} />
+  
