@@ -6,31 +6,30 @@ export interface JellyfinConfig {
 }
 
 /**
+ * URL pública por defecto (Tailscale Funnel de este servidor).
+ * Se puede sobreescribir con la variable de entorno JELLYFIN_URL.
+ * Es información pública: no contiene secretos.
+ */
+const DEFAULT_JELLYFIN_URL = 'https://jellyfin.tail331bc5.ts.net';
+
+const isHttpUrl = (value: string): boolean => /^https?:\/\/[^\s]+$/i.test(value);
+
+/**
  * Lee la configuración desde variables de entorno (solo servidor).
  * Nunca uses NEXT_PUBLIC_* aquí: la API key no debe llegar al navegador.
  */
 export function getJellyfinConfig(): JellyfinConfig | null {
-  let url = findJellyfinUrl();
-  let apiKey = findJellyfinApiKey();
+  const url = findJellyfinUrl();
+  const apiKey = findJellyfinApiKey();
   if (!url || !apiKey) return null;
-
-  const isUrl = (value: string) => /^https?:\/\//i.test(value);
-
-  // Recuperación automática: si los dos valores se guardaron cruzados
-  // (URL en el campo de la clave y viceversa), los intercambiamos.
-  if (!isUrl(url) && isUrl(apiKey)) {
-    [url, apiKey] = [apiKey, url];
-  }
-
-  // Sin esta validación, una URL mal guardada produce errores crípticos del tipo
-  // "Failed to parse URL from <valor>".
-  if (!/^https?:\/\/[^\s]+$/i.test(url)) return null;
   return { url: url.replace(/\/+$/, ''), apiKey };
 }
 
 export interface JellyfinDiagnostics {
   hasUrl: boolean;
   urlValid: boolean;
+  /** true si no hay JELLYFIN_URL válida y se usa la URL pública por defecto. */
+  usingDefaultUrl: boolean;
   hasApiKey: boolean;
   /** true si JELLYFIN_URL parece contener la API key (valores cruzados). */
   urlLooksLikeApiKey: boolean;
@@ -40,16 +39,19 @@ export interface JellyfinDiagnostics {
 }
 
 export function jellyfinDiagnostics(): JellyfinDiagnostics {
-  const rawUrl = findJellyfinUrl();
+  const rawUrl = process.env.JELLYFIN_URL?.trim();
   const apiKey = findJellyfinApiKey();
-  const urlValid = Boolean(rawUrl && /^https?:\/\/[^\s]+$/i.test(rawUrl));
-  const keyIsUrl = Boolean(apiKey && /^https?:\/\/[^\s]+$/i.test(apiKey));
+  const configuredUrl = findConfiguredUrl();
+  const urlValid = Boolean(configuredUrl && isHttpUrl(configuredUrl));
   return {
-    hasUrl: Boolean(rawUrl),
+    hasUrl: Boolean(configuredUrl),
     urlValid,
+    usingDefaultUrl: !urlValid,
     hasApiKey: Boolean(apiKey),
-    urlLooksLikeApiKey: Boolean(rawUrl && !urlValid && /^[a-f0-9]{24,}$/i.test(rawUrl)),
-    valuesSwapped: Boolean(rawUrl && !urlValid && keyIsUrl),
+    urlLooksLikeApiKey: Boolean(rawUrl && !isHttpUrl(rawUrl) && /^[a-f0-9]{24,}$/i.test(rawUrl)),
+    valuesSwapped: Boolean(
+      rawUrl && !isHttpUrl(rawUrl) && apiKey && isHttpUrl(apiKey)
+    ),
     envNames: jellyfinEnvNames(),
   };
 }
@@ -59,31 +61,49 @@ export function jellyfinEnvNames(): string[] {
   return Object.keys(process.env).filter((name) => /jellyfin/i.test(name)).sort();
 }
 
-function findJellyfinUrl(): string | undefined {
-  const direct = process.env.JELLYFIN_URL?.trim();
-  if (direct) return direct;
-  const alternative = Object.keys(process.env).find(
-    (name) => /jellyfin/i.test(name) && /(url|host|server)/i.test(name)
+function jellyfinEnvNamesMatching(pattern: RegExp): string[] {
+  return Object.keys(process.env).filter(
+    (name) => /jellyfin/i.test(name) && pattern.test(name)
   );
-  return alternative ? process.env[alternative]?.trim() : undefined;
+}
+
+/**
+ * Busca la URL de Jellyfin. Acepta nombres alternativos, valores guardados por
+ * error en el campo de la clave y, si no hay ninguno válido, la URL por defecto.
+ */
+function findConfiguredUrl(): string | undefined {
+  const names = [
+    'JELLYFIN_URL',
+    ...jellyfinEnvNamesMatching(/(url|host|server)/i),
+    ...jellyfinEnvNamesMatching(/(api[_\-\s]?key|apikey|key|token)/i),
+  ];
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+    if (value && isHttpUrl(value)) return value;
+  }
+  return undefined;
+}
+
+function findJellyfinUrl(): string {
+  const configured = findConfiguredUrl();
+  if (configured) return configured;
+  return process.env.JELLYFIN_URL?.trim() || DEFAULT_JELLYFIN_URL;
 }
 
 function findJellyfinApiKey(): string | undefined {
   const direct = process.env.JELLYFIN_API_KEY?.trim();
-  if (direct) return direct;
+  if (direct && !isHttpUrl(direct)) return direct;
 
   // Tolera variantes habituales: JELLYFIN_APIKEY, jellyfin_api_key,
   // JELLYFIN_TOKEN, JELLYFIN_KEY, "JELLYFIN_API_KEY " (con espacio), etc.
-  const candidates = Object.keys(process.env).filter(
-    (name) =>
-      /jellyfin/i.test(name) &&
-      /(api[_\-\s]?key|apikey|key|token)/i.test(name) &&
-      !/(url|host|server)/i.test(name)
+  // Descarta valores que en realidad sean una URL (campos cruzados).
+  const candidates = jellyfinEnvNamesMatching(/(api[_\-\s]?key|apikey|key|token)/i).filter(
+    (name) => !/(url|host|server)/i.test(name)
   );
 
   for (const name of candidates) {
     const value = process.env[name]?.trim();
-    if (value) return value;
+    if (value && !isHttpUrl(value)) return value;
   }
   return undefined;
 }
