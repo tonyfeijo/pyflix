@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
   getJellyfinConfig,
-  jellyfinEnvNames,
+  jellyfinDiagnostics,
   jellyfinFetch,
   mapJellyfinItem,
   mapJellyfinEpisode,
@@ -23,21 +23,33 @@ export async function POST() {
   const config = getJellyfinConfig();
 
   if (!config) {
-    // Diagnóstico: indica exactamente qué variable falta y en qué despliegue estamos.
+    // Diagnóstico claro: qué falla exactamente y en qué despliegue estamos.
+    const diag = jellyfinDiagnostics();
     const missing = [
-      process.env.JELLYFIN_URL?.trim() ? null : 'JELLYFIN_URL',
-      process.env.JELLYFIN_API_KEY?.trim() ? null : 'JELLYFIN_API_KEY',
+      diag.hasUrl ? null : 'JELLYFIN_URL',
+      diag.hasApiKey ? null : 'JELLYFIN_API_KEY',
     ].filter((name): name is string => Boolean(name));
+
+    let message: string;
+    if (missing.length > 0) {
+      message = `Falta configurar Jellyfin. Variable(s) sin definir: ${missing.join(
+        ' y '
+      )}. Añádelas en Vercel → Settings → Environment Variables (Producción) y vuelve a desplegar.`;
+    } else if (diag.urlLooksLikeApiKey) {
+      message =
+        'JELLYFIN_URL contiene la API key en vez de la dirección del servidor. ' +
+        'Debe ser la URL pública de Jellyfin, por ejemplo https://jellyfin.tail331bc5.ts.net (sin barra final).';
+    } else {
+      message =
+        'JELLYFIN_URL no es una URL válida: debe empezar por http:// o https:// y no tener espacios ni barra final.';
+    }
 
     return NextResponse.json(
       {
         success: false,
-        message: `Falta configurar Jellyfin. Variable(s) sin definir: ${missing.join(
-          ' y '
-        )}. Añádelas en Vercel → Settings → Environment Variables (Producción) y vuelve a desplegar.`,
+        message,
         missing,
-        /** Solo nombres, nunca valores: sirve para detectar erratas al guardarlas. */
-        jellyfinEnvNames: jellyfinEnvNames(),
+        ...diag,
         vercelEnv: process.env.VERCEL_ENV ?? 'local',
         commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
       },

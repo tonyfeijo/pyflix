@@ -13,7 +13,32 @@ export function getJellyfinConfig(): JellyfinConfig | null {
   const url = findJellyfinUrl();
   const apiKey = findJellyfinApiKey();
   if (!url || !apiKey) return null;
+  // Sin esta validación, una URL mal guardada produce errores crípticos del tipo
+  // "Failed to parse URL from <valor>".
+  if (!/^https?:\/\/[^\s]+$/i.test(url)) return null;
   return { url: url.replace(/\/+$/, ''), apiKey };
+}
+
+export interface JellyfinDiagnostics {
+  hasUrl: boolean;
+  urlValid: boolean;
+  hasApiKey: boolean;
+  /** true si JELLYFIN_URL parece contener la API key (valores cruzados). */
+  urlLooksLikeApiKey: boolean;
+  envNames: string[];
+}
+
+export function jellyfinDiagnostics(): JellyfinDiagnostics {
+  const rawUrl = findJellyfinUrl();
+  const apiKey = findJellyfinApiKey();
+  const urlValid = Boolean(rawUrl && /^https?:\/\/[^\s]+$/i.test(rawUrl));
+  return {
+    hasUrl: Boolean(rawUrl),
+    urlValid,
+    hasApiKey: Boolean(apiKey),
+    urlLooksLikeApiKey: Boolean(rawUrl && !urlValid && /^[a-f0-9]{24,}$/i.test(rawUrl)),
+    envNames: jellyfinEnvNames(),
+  };
 }
 
 /** Nombres de variables relacionadas con Jellyfin presentes (nunca devuelve valores). */
