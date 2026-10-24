@@ -1,5 +1,17 @@
 export const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 
+interface TMDBMovieMetadata {
+  title: string;
+  overview: string;
+  posterPath: string;
+  backdropPath: string;
+  releaseDate: string;
+  voteAverage: number;
+  genres: string[];
+  rating: string;
+  duration: string;
+}
+
 /**
  * Devuelve la URL completa y limpia para cargar pósters o wallpapers de TMDB
  */
@@ -20,7 +32,7 @@ export function getTmdbImageUrl(
 /**
  * Obtiene los metadatos de una película desde la API de TMDB (soporta título y año opcional)
  */
-export async function getMovieMetadataFromTMDB(query: string, year?: string | number) {
+export async function getMovieMetadataFromTMDB(query: string, year?: string | number): Promise<TMDBMovieMetadata | null> {
   const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY || process.env.TMDB_API_KEY;
 
   if (!apiKey) {
