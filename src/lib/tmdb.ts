@@ -9,7 +9,6 @@ export function getTmdbImageUrl(
 ): string {
   if (!path) return 'https://via.placeholder.com/500x750?text=No+Poster';
 
-  // Evita duplicaciones de https:// si el path ya trae la URL completa
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
   }
