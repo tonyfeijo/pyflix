@@ -111,16 +111,16 @@ Con `npm run dev`, el servidor local sí puede alcanzar tu Jellyfin de la red lo
 
 ### Actualización automática (ya no hace falta pulsar nada)
 
-`AutoJellyfinSync` (montado en `src/app/layout.tsx`) hace una consulta
-baratísima a `GET /api/jellyfin/sync` al abrir la web. Ese endpoint devuelve una
-**firma** del catálogo: `número de títulos:fecha del último añadido`.
+`AutoJellyfinSync` (montado en `src/app/layout.tsx`) mantiene el catálogo al día:
 
+- Al abrir la web pregunta a `GET /api/jellyfin/sync`, que devuelve una **firma**
+  del catálogo: `número de títulos:fecha del último añadido`.
+- Mientras la pestaña está visible, **repite la comprobación cada 60 s**.
 - Si la firma coincide con la guardada, no hace nada.
-- Si cambió (añadiste o borraste algo), reimporta en silencio, sustituye el
-  catálogo de Jellyfin y recarga. Un aviso discreto abajo a la derecha lo indica.
-- Se salta las páginas `/watch` para no cortar una reproducción.
-- Se comprueba como mucho **una vez por minuto** (así basta recargar para ver
-  contenido nuevo, sin repetir la consulta al navegar entre páginas).
+- Si cambió (añadiste o borraste algo), reimporta en silencio, **actualiza las
+  filas de la web en caliente** (sin recargar, sin cortar la reproducción) y
+  muestra un aviso discreto abajo a la derecha.
+- Se salta las páginas `/watch` para no interrumpir un vídeo.
 
 La importación **pagina** de 200 en 200 hasta el final (`JELLYFIN_PAGE_SIZE`
 permite cambiarlo), así que ya no hay tope de 300 títulos.

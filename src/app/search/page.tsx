@@ -7,11 +7,14 @@ import { Search, X, Filter, ChevronDown } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { MovieRow } from '@/components/content/MovieRow';
 import { mockMedia, searchMedia } from '@/lib/mock-data';
+import { useCatalogVersion } from '@/lib/catalog-events';
 import type { MediaItem } from '@/lib/types';
 
 function SearchContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
+  // Al llegar catálogo nuevo, se repite la búsqueda sin recargar.
+  const catalogVersion = useCatalogVersion();
   
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<MediaItem[]>([]);
@@ -40,7 +43,7 @@ function SearchContent() {
     }, 200);
     
     return () => clearTimeout(debounced);
-  }, [query, selectedType, selectedGenre]);
+  }, [query, selectedType, selectedGenre, catalogVersion]);
 
   const genres = ['all', 'Acción', 'Aventura', 'Animación', 'Comedia', 'Crimen', 'Drama', 'Fantasía', 'Terror', 'Misterio', 'Ciencia Ficción', 'Thriller'];
 

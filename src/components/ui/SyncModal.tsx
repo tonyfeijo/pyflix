@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { saveSyncedMovies, setSyncedSignature } from '@/lib/synced-catalog';
+import { notifyCatalogUpdated } from '@/lib/catalog-events';
 
 interface SyncModalProps {
   isOpen: boolean;
@@ -36,10 +37,12 @@ export default function SyncModal({ isOpen, onClose, onSuccess }: SyncModalProps
         }
         setMessage(`¡Listo! Se importaron ${data.count} títulos.`);
         if (onSuccess) onSuccess();
+        // Refresca la interfaz en caliente (sin recargar la página).
+        notifyCatalogUpdated();
 
         setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+          onClose();
+        }, 1200);
       } else {
         setMessage(`Error: ${data.message || 'No se pudo sincronizar el catálogo.'}`);
       }

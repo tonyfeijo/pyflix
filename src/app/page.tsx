@@ -20,6 +20,7 @@ import {
   getMediaByType,
 } from '@/lib/mock-data';
 import { useWatchlist } from '@/lib/watchlist';
+import { useCatalogVersion } from '@/lib/catalog-events';
 import type { MediaItem, Episode } from '@/lib/types';
 import { ListFilter } from 'lucide-react';
 
@@ -42,6 +43,9 @@ function HomeContent() {
 
   // Watchlist hook
   const { items: myWatchlistItems } = useWatchlist();
+
+  // Se re-renderiza cuando llega catálogo nuevo desde Jellyfin (sin recargar).
+  useCatalogVersion();
 
   // Sync activeTab with URL params
   useEffect(() => {
