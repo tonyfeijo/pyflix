@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
@@ -8,40 +8,77 @@ import { Play, Info, Plus, Check, ChevronRight, ChevronDown, Star, Share2, Downl
 import { Header } from '@/components/layout/Header';
 import { Player } from '@/components/content/Player';
 import { MovieRow } from '@/components/content/MovieRow';
-import { mockMedia, getMediaById, getCategories } from '@/lib/mock-data';
+import { getAllMedia, getMediaById, getCategories } from '@/lib/mock-data';
+import { useCatalogVersion } from '@/lib/catalog-events';
 import type { MediaItem, Episode } from '@/lib/types';
 
 export default function WatchPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const [media, setMedia] = useState<MediaItem | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false);
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(1);
+  // Si el auto-sync termina después de abrir esta página, se resuelve el título.
+  const catalogVersion = useCatalogVersion();
 
   useEffect(() => {
     const found = getMediaById(id);
     if (found) {
       setMedia(found);
+      setNotFound(false);
       if (found.episodes && found.episodes.length > 0) {
         const seasons = [...new Set(found.episodes.map(e => e.season))];
         setSelectedSeason(seasons[0]);
       }
+    } else {
+      setNotFound(true);
     }
-  }, [id]);
+  }, [id, catalogVersion]);
 
   if (!media) {
+    if (!notFound) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-netflix-black">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-netflix-gray border-t-netflix-red" />
+        </div>
+      );
+    }
+
     return (
-      <div className="min-h-screen flex items-center justify-center bg-netflix-black">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-netflix-gray border-t-netflix-red" />
-      </div>
+      <>
+        <Header />
+        <div className="min-h-[70vh] flex flex-col items-center justify-center bg-netflix-black px-6 text-center">
+          <h1 className="text-3xl font-bold text-white mb-3">Título no encontrado</h1>
+          <p className="text-neutral-400 text-sm max-w-md mb-8">
+            Puede que se haya borrado de Jellyfin o que el catálogo aún no se haya
+            importado en este navegador.
+          </p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <button
+              onClick={() => router.push('/')}
+              className="px-6 py-2.5 bg-netflix-red text-white font-bold rounded-lg hover:bg-netflix-redHover transition-colors shadow-lg"
+            >
+              Ir al inicio
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2.5 bg-neutral-800 text-white font-bold rounded-lg hover:bg-neutral-700 transition-colors"
+            >
+              Volver a comprobar
+            </button>
+          </div>
+        </div>
+      </>
     );
   }
 
   const seasons = media.episodes ? [...new Set(media.episodes.map(e => e.season))] : [];
   const currentSeasonEpisodes = media.episodes?.filter(e => e.season === selectedSeason) || [];
-  const match = media.match ?? Math.floor(Math.random() * 20) + 80;
+  const match = media.match;
 
   const handlePlay = (episode?: Episode) => {
     setCurrentEpisode(episode || null);
@@ -74,7 +111,7 @@ export default function WatchPage() {
   };
 
   // Related content
-  const relatedMedia = mockMedia.filter(m => 
+  const relatedMedia = getAllMedia().filter(m => 
     m.id !== media.id && 
     m.genre.some(g => media.genre.includes(g))
   ).slice(0, 10);

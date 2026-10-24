@@ -10,14 +10,14 @@ import { Top10Row } from '@/components/content/Top10Row';
 import { DetailModal } from '@/components/content/DetailModal';
 import { Player } from '@/components/content/Player';
 import {
-  mockMedia,
   getTrendingMedia,
   getNewReleases,
   getTopRated,
   getTop10,
-  getContinueWatching,
   getCategories,
   getMediaByType,
+  getMainCatalog,
+  getCollection,
 } from '@/lib/mock-data';
 import { useWatchlist } from '@/lib/watchlist';
 import { useCatalogVersion } from '@/lib/catalog-events';
@@ -32,7 +32,7 @@ function HomeContent() {
   const filterParam = searchParams.get('filter'); // 'new' | 'my-list' | null
 
   const [activeTab, setActiveTab] = useState<'all' | 'series' | 'movie' | 'new' | 'my-list'>('all');
-  const [featuredItem, setFeaturedItem] = useState<MediaItem>(mockMedia[0]);
+  const [featuredItem, setFeaturedItem] = useState<MediaItem | null>(null);
   const [showPlayer, setShowPlayer] = useState(false);
   const [currentMedia, setCurrentMedia] = useState<MediaItem | null>(null);
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
@@ -45,7 +45,7 @@ function HomeContent() {
   const { items: myWatchlistItems } = useWatchlist();
 
   // Se re-renderiza cuando llega catálogo nuevo desde Jellyfin (sin recargar).
-  useCatalogVersion();
+  const catalogVersion = useCatalogVersion();
 
   // Sync activeTab with URL params
   useEffect(() => {
@@ -58,16 +58,20 @@ function HomeContent() {
 
   // Adjust featured item based on active tab
   useEffect(() => {
+    let list: MediaItem[];
     if (activeTab === 'series') {
-      const seriesList = getMediaByType('series');
-      setFeaturedItem(seriesList[0] || mockMedia[0]);
+      list = getMediaByType('series');
     } else if (activeTab === 'movie') {
-      const movieList = getMediaByType('movie');
-      setFeaturedItem(movieList[0] || mockMedia[8]);
+      list = getMediaByType('movie');
     } else {
-      setFeaturedItem(mockMedia[0]);
+      list = getMainCatalog();
     }
-  }, [activeTab]);
+    // Preferimos un título con imagen de fondo real para el cartel grande.
+    const withBackdrop = list.find(
+      (item) => item.backdrop && !item.backdrop.includes('placeholder')
+    );
+    setFeaturedItem(withBackdrop ?? list[0] ?? null);
+  }, [activeTab, catalogVersion]);
 
   const handlePlay = (media: MediaItem, episode?: Episode) => {
     setIsDetailOpen(false);
@@ -118,11 +122,15 @@ function HomeContent() {
   const newReleases = filterMedia(getNewReleases());
   const topRated = filterMedia(getTopRated());
   const top10 = filterMedia(getTop10());
-  const continueWatching = filterMedia(getContinueWatching('1'));
   const categories = getCategories().map(cat => ({
     ...cat,
     items: filterMedia(cat.items),
   })).filter(cat => cat.items.length > 0);
+
+  // Secciones especiales del catálogo real (Jellyfin).
+  const videoClips = getCollection('video-clips');
+  const cortosNacionales = getCollection('cortos-nacionales');
+  const documentales = getCollection('documentales');
 
   return (
     <div className="min-h-screen bg-netflix-black text-white selection:bg-netflix-red selection:text-white pb-20">
@@ -130,12 +138,31 @@ function HomeContent() {
 
       <main role="main">
         {/* Featured Hero Billboard */}
-        {activeTab !== 'my-list' && (
+        {activeTab !== 'my-list' && featuredItem && (
           <Hero
             item={featuredItem}
             onPlay={() => handlePlay(featuredItem)}
             onMoreInfo={() => handleOpenDetail(featuredItem)}
           />
+        )}
+
+        {/* Catálogo vacío: no hay nada que mostrar todavía */}
+        {activeTab !== 'my-list' && !featuredItem && (
+          <div className="max-w-2xl mx-auto px-6 pt-40 pb-16 text-center">
+            <ListFilter className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold mb-2">Tu catálogo está vacío</h1>
+            <p className="text-neutral-400 text-sm mb-6">
+              Todavía no hay títulos importados. Añade películas o series a Jellyfin y
+              aparecerán aquí solas en menos de un minuto (PyFlix comprueba el servidor
+              automáticamente).
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2.5 bg-netflix-red text-white font-bold rounded-lg hover:bg-netflix-redHover transition-colors shadow-lg"
+            >
+              Volver a comprobar
+            </button>
+          </div>
         )}
 
         {/* My List dedicated view if selected */}
@@ -191,11 +218,29 @@ function HomeContent() {
               />
             )}
 
-            {/* Continue Watching Row */}
-            {continueWatching.length > 0 && activeTab === 'all' && (
+            {/* Secciones especiales */}
+            {videoClips.length > 0 && activeTab === 'all' && (
               <MovieRow
-                title="Continuar viendo para Tony"
-                items={continueWatching}
+                title="Video clips"
+                items={videoClips}
+                onItemClick={handleOpenDetail}
+                onPlay={handlePlay}
+              />
+            )}
+
+            {cortosNacionales.length > 0 && activeTab === 'all' && (
+              <MovieRow
+                title="Cortos nacionales"
+                items={cortosNacionales}
+                onItemClick={handleOpenDetail}
+                onPlay={handlePlay}
+              />
+            )}
+
+            {documentales.length > 0 && activeTab === 'all' && (
+              <MovieRow
+                title="Documentales"
+                items={documentales}
                 onItemClick={handleOpenDetail}
                 onPlay={handlePlay}
               />

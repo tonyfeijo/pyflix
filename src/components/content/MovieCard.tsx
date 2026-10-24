@@ -29,7 +29,8 @@ export function MovieCard({
   const { inList, toggle } = useWatchlist();
 
   const isInMyList = inList(item.id);
-  const match = item.match || 95;
+  // Sin nota real no inventamos un porcentaje de coincidencia.
+  const match = item.match;
 
   const handlePlayDirect = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -69,8 +70,12 @@ export function MovieCard({
             {item.title}
           </p>
           <div className="flex items-center gap-2 text-[10px] text-neutral-300 mt-0.5">
-            <span className="text-green-400 font-bold">{match}%</span>
-            <span>•</span>
+            {match !== undefined && (
+              <>
+                <span className="text-green-400 font-bold">{match}%</span>
+                <span>•</span>
+              </>
+            )}
             <span className="px-1 border border-white/20 rounded uppercase">{item.rating}</span>
             <span>•</span>
             <span>{item.duration}</span>
@@ -101,7 +106,11 @@ export function MovieCard({
               className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col justify-between p-3"
             >
               <div className="flex items-center justify-between">
-                <span className="text-green-400 text-xs font-bold">{match}% coincidencia</span>
+                {match !== undefined ? (
+                  <span className="text-green-400 text-xs font-bold">{match}% coincidencia</span>
+                ) : (
+                  <span />
+                )}
                 <span className="text-[10px] uppercase font-bold text-neutral-300 border border-white/30 px-1 rounded">
                   {item.rating}
                 </span>

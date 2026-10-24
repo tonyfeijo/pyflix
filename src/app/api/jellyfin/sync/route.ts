@@ -15,7 +15,7 @@ import type { Episode, MediaItem } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const EPISODE_FIELDS = 'Overview,RunTimeTicks,ImageTags';
+const EPISODE_FIELDS = 'Overview,RunTimeTicks,ImageTags,MediaSources';
 
 /** Páginas de 200: Jellyfin devuelve mucho más rápido que pidiendo todo de golpe. */
 const PAGE_SIZE = Number(process.env.JELLYFIN_PAGE_SIZE) || 200;
@@ -92,7 +92,7 @@ export async function GET() {
   try {
     const page = await jellyfinFetch<JellyfinItemsResponse>(
       config,
-      '/Items?IncludeItemTypes=Movie,Series&Recursive=true&Limit=1' +
+      '/Items?IncludeItemTypes=Movie,Series,Video,MusicVideo&Recursive=true&Limit=1' +
         '&SortBy=DateCreated&SortOrder=Descending&Fields=DateCreated'
     );
 
@@ -166,7 +166,7 @@ async function fetchAllLibraryItems(
   while (start < MAX_ITEMS) {
     const page = await jellyfinFetch<JellyfinItemsResponse>(
       config,
-      '/Items?IncludeItemTypes=Movie,Series&Recursive=true' +
+      '/Items?IncludeItemTypes=Movie,Series,Video,MusicVideo&Recursive=true' +
         `&Fields=${JELLYFIN_FIELDS}` +
         '&ImageTypeLimit=1&EnableImageTypes=Primary,Backdrop' +
         `&SortBy=SortName&SortOrder=Ascending&Limit=${PAGE_SIZE}&StartIndex=${start}`

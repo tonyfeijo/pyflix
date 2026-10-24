@@ -35,8 +35,11 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
   const [showSettings, setShowSettings] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [quality, setQuality] = useState('Auto');
-  const [subtitle, setSubtitle] = useState('Off');
+  /** Índice de la pista de subtítulos activa; -1 = desactivados. */
+  const [activeSubtitle, setActiveSubtitle] = useState(-1);
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const subtitleTracks = episode?.subtitles ?? media.subtitles ?? [];
 
   // Hide controls after inactivity
   const resetControlsTimeout = useCallback(() => {
@@ -61,7 +64,34 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
   // Video event handlers
   const handleLoadedMetadata = () => {
     if (videoRef.current) setDuration(videoRef.current.duration);
+
+    // Elige subtítulo automáticamente: español si existe; si solo hay una
+    // pista, esa; si hay varias sin español, se quedan apagados.
+    setActiveSubtitle((current) => {
+      if (current >= 0) return current;
+      if (subtitleTracks.length === 0) return -1;
+      const spanish = subtitleTracks.findIndex((track) =>
+        /^(spa|es|es-|es_)/i.test(track.language)
+      );
+      if (spanish >= 0) return spanish;
+      return subtitleTracks.length === 1 ? 0 : -1;
+    });
   };
+
+  // Aplica la pista elegida al elemento <video>.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const tracks = video.textTracks;
+    for (let i = 0; i < tracks.length; i++) {
+      tracks[i].mode = i === activeSubtitle ? 'showing' : 'disabled';
+    }
+  }, [activeSubtitle, subtitleTracks.length, episode?.id, media.id]);
+
+  // Al cambiar de título/episodio, vuelve a elegir (normalmente español).
+  useEffect(() => {
+    setActiveSubtitle(-1);
+  }, [episode?.id, media.id]);
 
   const handleTimeUpdate = () => {
     if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
@@ -202,8 +232,19 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
           onDoubleClick={toggleFullscreen}
           playsInline
           autoPlay={autoPlay}
-          src={episode?.videoUrl || media.videoUrl || 'https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4'}
-        />
+          src={episode?.videoUrl || media.videoUrl}
+        >
+          {subtitleTracks.map((track, index) => (
+            <track
+              key={`${track.index}-${track.language}`}
+              kind="subtitles"
+              src={track.url}
+              srcLang={track.language || 'und'}
+              label={track.label}
+              default={index === activeSubtitle}
+            />
+          ))}
+        </video>
         
         {/* Loading placeholder */}
         {!duration && (
@@ -392,18 +433,33 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
                           className="absolute bottom-full right-0 mb-2 glass-strong rounded-xl p-2 min-w-[160px] shadow-netflix-lg"
                         >
                           <p className="px-3 py-2 text-xs font-medium text-netflix-gray uppercase">Subtítulos</p>
-                          {['Off', 'Español', 'English', 'Português'].map(sub => (
+                          <button
+                            onClick={() => setActiveSubtitle(-1)}
+                            className={cn(
+                              'w-full px-3 py-2 text-left text-sm rounded-lg transition-colors',
+                              activeSubtitle === -1 ? 'bg-netflix-red/20 text-netflix-red' : 'text-netflix-white hover:bg-netflix-gray/10'
+                            )}
+                          >
+                            Apagado
+                          </button>
+                          {subtitleTracks.map((track, index) => (
                             <button
-                              key={sub}
-                              onClick={() => setSubtitle(sub)}
+                              key={`${track.index}-${track.language}`}
+                              onClick={() => setActiveSubtitle(index)}
                               className={cn(
                                 'w-full px-3 py-2 text-left text-sm rounded-lg transition-colors',
-                                subtitle === sub ? 'bg-netflix-red/20 text-netflix-red' : 'text-netflix-white hover:bg-netflix-gray/10'
+                                activeSubtitle === index ? 'bg-netflix-red/20 text-netflix-red' : 'text-netflix-white hover:bg-netflix-gray/10'
                               )}
                             >
-                              {sub}
+                              {track.label}
                             </button>
                           ))}
+                          {subtitleTracks.length === 0 && (
+                            <p className="px-3 pb-2 text-xs text-netflix-gray">
+                              Este título no tiene subtítulos. Añádelos en Jellyfin (o instala un
+                              proveedor como OpenSubtitles) y se importarán solos.
+                            </p>
+                          )}
                           <hr className="my-1 border-netflix-gray/20" />
                           <p className="px-3 py-2 text-xs font-medium text-netflix-gray uppercase">Velocidad</p>
                           {[0.5, 0.75, 1, 1.25, 1.5, 2].map(rate => (

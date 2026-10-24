@@ -2,24 +2,20 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { MediaItem } from './types';
-import { mockMedia } from './mock-data';
+import { getAllMedia } from './mock-data';
+import { CATALOG_UPDATED_EVENT } from './catalog-events';
 
 const STORAGE_KEY = 'pyflix_my_list';
 const EVENT_NAME = 'pyflix_list_updated';
 
 export function getStoredListIds(): string[] {
-  if (typeof window === 'undefined') return ['1', '4', '8', '11'];
+  if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      // Default sample items in my list
-      const initial = ['1', '4', '8', '11'];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
-      return initial;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return ['1', '4', '8'];
+    return [];
   }
 }
 
@@ -51,8 +47,9 @@ export function useWatchlist() {
   const syncList = useCallback(() => {
     const ids = getStoredListIds();
     setListIds(ids);
+    const catalog = getAllMedia();
     const resolved = ids
-      .map(id => mockMedia.find(m => m.id === id))
+      .map(id => catalog.find(m => m.id === id))
       .filter((m): m is MediaItem => Boolean(m));
     setItems(resolved);
   }, []);
@@ -62,9 +59,12 @@ export function useWatchlist() {
     const handler = () => syncList();
     window.addEventListener(EVENT_NAME, handler);
     window.addEventListener('storage', handler);
+    // Al llegar catálogo nuevo desde Jellyfin se reintenta resolver la lista.
+    window.addEventListener(CATALOG_UPDATED_EVENT, handler);
     return () => {
       window.removeEventListener(EVENT_NAME, handler);
       window.removeEventListener('storage', handler);
+      window.removeEventListener(CATALOG_UPDATED_EVENT, handler);
     };
   }, [syncList]);
 

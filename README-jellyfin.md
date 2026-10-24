@@ -104,12 +104,10 @@ Con `npm run dev`, el servidor local sí puede alcanzar tu Jellyfin de la red lo
 
 ## 5. Importar en PyFlix
 
-1. Abre PyFlix.
-2. Pulsa el botón de **Sincronizar**.
-3. Elige **Importar desde Jellyfin**.
-4. El catálogo se guarda en el navegador (`localStorage`) y aparece en la home.
+No hay que hacer nada: PyFlix importa el catálogo solo. Al abrir la web por
+primera vez guarda todo en el navegador (`localStorage`) y lo muestra en la home.
 
-### Actualización automática (ya no hace falta pulsar nada)
+### Actualización automática (no hay botón de sincronizar)
 
 `AutoJellyfinSync` (montado en `src/app/layout.tsx`) mantiene el catálogo al día:
 
@@ -121,6 +119,9 @@ Con `npm run dev`, el servidor local sí puede alcanzar tu Jellyfin de la red lo
   filas de la web en caliente** (sin recargar, sin cortar la reproducción) y
   muestra un aviso discreto abajo a la derecha.
 - Se salta las páginas `/watch` para no interrumpir un vídeo.
+
+El botón **Sync** se ha eliminado: el único modo de importar es automático.
+Si algo falla, basta recargar la página para reintentarlo.
 
 La importación **pagina** de 200 en 200 hasta el final (`JELLYFIN_PAGE_SIZE`
 permite cambiarlo), así que ya no hay tope de 300 títulos.
@@ -141,7 +142,12 @@ Jellyfin no encuentra los episodios y los mete como películas sueltas.
 | Películas | `movies` | `PELICULAS` |
 | Series | `tvshows` | `SERIES` |
 | Documentales | `movies` | `DOCUMENTALES` |
-| Vídeos caseros | `homevideos` | `VIDEO CLIPS` |
+| Video clips | `homevideos` | `VIDEO CLIPS` |
+| Cortos nacionales | `movies` | `CORTOS NACIONALES` |
+
+PyFlix crea una fila propia en la home para **Video clips**, **Cortos
+nacionales** y **Documentales** (según la carpeta de la que venga el archivo).
+Esos títulos no se mezclan con las filas de películas y series.
 
 Y activa **«Actualizar biblioteca en tiempo real»** en cada una (Panel →
 Bibliotecas → cada biblioteca), para que detecte archivos nuevos al instante.
@@ -158,9 +164,16 @@ Bibliotecas → cada biblioteca), para que detecte archivos nuevos al instante.
 |---|---|
 | Importar catálogo | `POST /api/jellyfin/sync` |
 | Proxy de carátulas | `GET /api/jellyfin/image?id=...&type=Primary` |
+| Subtítulos | `GET /api/jellyfin/subtitles?id=...&index=...&source=...` |
 | Reproducción | URL directa `JELLYFIN_URL/Videos/{id}/stream?static=true` |
 
 - Las carátulas pasan por `/api/jellyfin/image`, así la API key no se expone.
+- Los **subtítulos** se piden a Jellyfin ya convertidos a WebVTT y se sirven
+  desde `/api/jellyfin/subtitles` (la etiqueta `<track>` no puede enviar la API
+  key). En el reproductor aparece un menú con las pistas reales y se activa
+  solo el español si existe.
+- Solo se muestran subtítulos de **texto** (SRT, ASS, MOV_TEXT…). Los de imagen
+  (DVDSUB, PGS) no se pueden convertir a WebVTT y se ocultan del menú.
 - El **video sí se reproduce directamente desde Jellyfin** (no a través de
   Vercel) para no consumir ancho de banda ni superar los límites de las
   funciones serverless.
@@ -178,5 +191,5 @@ Bibliotecas → cada biblioteca), para que detecte archivos nuevos al instante.
 | `No se pudo conectar con Jellyfin` | `JELLYFIN_URL` no es accesible desde internet o no es HTTPS. |
 | Carátulas en gris | El proxy no llega a Jellyfin; revisa la URL y la API key. |
 | Una serie sale con 0 episodios | La biblioteca estaba mal tipada al escanear; refresca esa serie (ver sección 6). |
-| Los títulos nuevos no aparecen | La firma del catálogo no cambió o el navegador tiene la comprobación hecha en esta sesión; recarga o usa Sync. |
+| Los títulos nuevos no aparecen | La firma del catálogo no cambió, la pestaña no está visible o han pasado menos de 60 s; espera un poco o recarga la página. |
 | El video no reproduce | Códec no soportado por el navegador (p. ej. MKV/H.265). Jellyfin puede transcodificar si lo habilitas. |

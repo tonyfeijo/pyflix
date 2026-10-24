@@ -1,3 +1,14 @@
+export interface SubtitleTrack {
+  /** Índice de la pista en Jellyfin. */
+  index: number;
+  /** Código de idioma, p. ej. "spa", "eng". */
+  language: string;
+  /** Etiqueta legible, p. ej. "Español (SRT)". */
+  label: string;
+  /** URL del proxy de subtítulos de PyFlix. */
+  url: string;
+}
+
 export interface MediaItem {
   id: string;
   title: string;
@@ -12,6 +23,9 @@ export interface MediaItem {
   logo?: string;
   videoUrl?: string;
   trailerUrl?: string;
+  subtitles?: SubtitleTrack[];
+  /** Sección especial: clips, cortos nacionales o documentales. */
+  collection?: 'video-clips' | 'cortos-nacionales' | 'documentales';
   match?: number; // 0-100
   isNew?: boolean;
   isTrending?: boolean;
@@ -29,6 +43,7 @@ export interface Episode {
   duration: string;
   thumbnail: string;
   videoUrl: string;
+  subtitles?: SubtitleTrack[];
 }
 
 export interface Category {

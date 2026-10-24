@@ -1,4 +1,4 @@
-import type { Episode, MediaItem } from '@/lib/types';
+import type { Episode, MediaItem, SubtitleTrack } from '@/lib/types';
 
 export interface JellyfinConfig {
   url: string;
@@ -126,6 +126,23 @@ export interface JellyfinItem {
   People?: Array<{ Name: string; Type: string }>;
   /** Fecha de alta en Jellyfin: se usa para detectar catálogo nuevo. */
   DateCreated?: string;
+  /** Ruta del archivo: sirve para saber de qué carpeta viene. */
+  Path?: string;
+  MediaSources?: JellyfinMediaSource[];
+}
+
+export interface JellyfinMediaStream {
+  Type?: string;
+  Index?: number;
+  Codec?: string;
+  Language?: string;
+  DisplayTitle?: string;
+  IsExternal?: boolean;
+}
+
+export interface JellyfinMediaSource {
+  Id?: string;
+  MediaStreams?: JellyfinMediaStream[];
 }
 
 export interface JellyfinItemsResponse {
@@ -145,6 +162,8 @@ export const JELLYFIN_FIELDS = [
   'ImageTags',
   'BackdropImageTags',
   'DateCreated',
+  'MediaSources',
+  'Path',
 ].join(',');
 
 /** Petición autenticada a la API de Jellyfin (lado servidor). */
@@ -193,6 +212,79 @@ export function streamUrl(config: JellyfinConfig, itemId: string): string {
   return `${config.url}/Videos/${itemId}/stream?${params.toString()}`;
 }
 
+/**
+ * URL del proxy de subtítulos: la etiqueta <track> no puede enviar cabeceras,
+ * así que el VTT se sirve desde nuestra propia ruta (que sí lleva la API key).
+ */
+export function subtitleProxyUrl(
+  itemId: string,
+  sourceId: string | undefined,
+  index: number
+): string {
+  const params = new URLSearchParams({ id: itemId, index: String(index) });
+  if (sourceId) params.set('source', sourceId);
+  return `/api/jellyfin/subtitles?${params.toString()}`;
+}
+
+/**
+ * Códecs de subtítulo que se pueden convertir a WebVTT.
+ * Los de imagen (DVDSUB, PGS, VOBSUB) se descartan: el navegador no los pinta.
+ */
+const TEXT_SUBTITLE_CODECS = new Set([
+  'subrip',
+  'srt',
+  'ass',
+  'ssa',
+  'mov_text',
+  'webvtt',
+  'vtt',
+  'ttml',
+  'dfxp',
+  'text',
+  'microdvd',
+  'subviewer',
+  'sami',
+  'smptett',
+]);
+
+/** Nombre legible del idioma a partir del código ISO ("spa" → "Español"). */
+function languageLabel(code?: string, displayTitle?: string): string {
+  if (code) {
+    try {
+      const name = new Intl.DisplayNames(['es'], { type: 'language' }).of(
+        code.toLowerCase()
+      );
+      if (name && name.toLowerCase() !== code.toLowerCase()) {
+        return name.charAt(0).toUpperCase() + name.slice(1);
+      }
+    } catch {
+      /* código no reconocido: usamos el título de Jellyfin */
+    }
+  }
+  return displayTitle || code || 'Subtítulos';
+}
+
+/** Extrae las pistas de subtítulo de texto del primer origen de vídeo. */
+function mapSubtitles(item: JellyfinItem): SubtitleTrack[] {
+  const source = item.MediaSources?.[0];
+  if (!source) return [];
+
+  const tracks: SubtitleTrack[] = [];
+  for (const stream of source.MediaStreams ?? []) {
+    if (stream.Type !== 'Subtitle' || stream.Index === undefined) continue;
+    const codec = (stream.Codec ?? '').toLowerCase();
+    if (codec && !TEXT_SUBTITLE_CODECS.has(codec)) continue;
+
+    tracks.push({
+      index: stream.Index,
+      language: stream.Language ?? 'und',
+      label: languageLabel(stream.Language, stream.DisplayTitle),
+      url: subtitleProxyUrl(item.Id, source.Id, stream.Index),
+    });
+  }
+  return tracks;
+}
+
 const TICKS_PER_SECOND = 10_000_000;
 
 export function formatRuntime(ticks?: number): string {
@@ -218,6 +310,29 @@ function pickImage(item: JellyfinItem, type: 'Primary' | 'Backdrop', width: numb
     return imageProxyUrl(item.Id, 'Backdrop', width, 0);
   }
   return type === 'Backdrop' ? '/placeholder-backdrop.png' : '/placeholder-poster.png';
+}
+
+/**
+ * Sección de PyFlix a la que pertenece un título.
+ * Se deduce de la carpeta del archivo (Jellyfin no expone la biblioteca en el item).
+ */
+type CollectionKind = 'video-clips' | 'cortos-nacionales' | 'documentales';
+
+function detectCollection(item: JellyfinItem): CollectionKind | undefined {
+  const path = (item.Path ?? '').replace(/\//g, '\\').toLowerCase();
+
+  if (path.includes('\\video clips\\') || path.includes('\\videoclips\\')) {
+    return 'video-clips';
+  }
+  if (path.includes('\\cortos nacionales\\') || path.includes('\\cortos\\')) {
+    return 'cortos-nacionales';
+  }
+  if (path.includes('\\documentales\\')) {
+    return 'documentales';
+  }
+  // Biblioteca de vídeos caseros sin carpeta reconocible.
+  if (item.Type === 'MusicVideo') return 'video-clips';
+  return undefined;
 }
 
 export function mapJellyfinItem(
@@ -252,6 +367,8 @@ export function mapJellyfinItem(
     thumbnail: pickImage(item, 'Primary', 500),
     backdrop: pickImage(item, 'Backdrop', 1280),
     videoUrl: isSeries ? undefined : streamUrl(config, item.Id),
+    subtitles: isSeries ? undefined : mapSubtitles(item),
+    collection: detectCollection(item),
     match: score,
     cast: people.filter((p) => p.Type === 'Actor').map((p) => p.Name).slice(0, 8),
     director: directors[0],
@@ -275,5 +392,6 @@ export function mapJellyfinEpisode(
       ? imageProxyUrl(item.Id, 'Primary', 500)
       : fallbackImage,
     videoUrl: streamUrl(config, item.Id),
+    subtitles: mapSubtitles(item),
   };
 }

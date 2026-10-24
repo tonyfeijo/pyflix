@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Play, Plus, Check, ThumbsUp, Volume2, VolumeX, ChevronDown } from 'lucide-react';
 import type { MediaItem, Episode } from '@/lib/types';
-import { mockMedia } from '@/lib/mock-data';
+import { getAllMedia } from '@/lib/mock-data';
 import { useWatchlist } from '@/lib/watchlist';
 import { cn } from '@/lib/utils';
 
@@ -44,7 +44,7 @@ export function DetailModal({ media, isOpen, onClose, onPlay }: DetailModalProps
   const currentEpisodes = media.episodes?.filter(e => e.season === selectedSeason) || [];
 
   // Related content
-  const related = mockMedia.filter(m =>
+  const related = getAllMedia().filter(m =>
     m.id !== media.id && m.genre.some(g => media.genre.includes(g))
   ).slice(0, 6);
 
@@ -153,7 +153,9 @@ export function DetailModal({ media, isOpen, onClose, onPlay }: DetailModalProps
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="md:col-span-2 space-y-4">
                 <div className="flex flex-wrap items-center gap-3 text-sm font-semibold">
-                  <span className="text-green-400 font-bold">{media.match || 97}% de coincidencia</span>
+                  {media.match !== undefined && (
+                    <span className="text-green-400 font-bold">{media.match}% de coincidencia</span>
+                  )}
                   <span className="text-neutral-400">{media.year}</span>
                   <span className="px-2 py-0.5 border border-white/30 rounded text-xs text-neutral-300 font-medium">
                     {media.rating}
@@ -283,7 +285,9 @@ export function DetailModal({ media, isOpen, onClose, onPlay }: DetailModalProps
                         <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                           <div>
                             <div className="flex items-center justify-between text-xs font-semibold mb-1">
-                              <span className="text-green-400">{item.match || 95}% coincidencia</span>
+                              {item.match !== undefined && (
+                                <span className="text-green-400">{item.match}% coincidencia</span>
+                              )}
                               <span className="border border-white/30 px-1 py-0.2 rounded text-[10px] text-neutral-300">
                                 {item.rating}
                               </span>

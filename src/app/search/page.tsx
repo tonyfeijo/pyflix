@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Filter, ChevronDown } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { MovieRow } from '@/components/content/MovieRow';
-import { mockMedia, searchMedia } from '@/lib/mock-data';
+import { searchMedia } from '@/lib/mock-data';
 import { useCatalogVersion } from '@/lib/catalog-events';
 import type { MediaItem } from '@/lib/types';
 

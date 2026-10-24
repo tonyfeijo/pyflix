@@ -12,18 +12,15 @@ import {
   Tv, 
   Film, 
   Sparkles, 
-  ListFilter, 
-  RefreshCw 
+  ListFilter 
 } from 'lucide-react';
 import { mockProfiles, type UserProfile } from '@/lib/mock-data';
-import SyncModal from '@/components/ui/SyncModal';
 import { cn } from '@/lib/utils';
 
 export function Header() {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showSyncModal, setShowSyncModal] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentProfile, setCurrentProfile] = useState<UserProfile>(mockProfiles[0]);
@@ -118,16 +115,6 @@ export function Header() {
             )}
           </form>
 
-          {/* BOTÓN DE SINCRONIZACIÓN */}
-          <button
-            onClick={() => setShowSyncModal(true)}
-            className="flex items-center gap-1.5 bg-red-600/90 hover:bg-red-600 text-white text-xs font-semibold px-2.5 py-1.5 rounded transition shadow"
-            title="Sincronizar catálogo"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Sync</span>
-          </button>
-
           {/* NOTIFICACIONES */}
           <button
             className="p-2 rounded-full text-zinc-300 hover:text-white hover:bg-white/10 transition-colors relative"
@@ -180,12 +167,6 @@ export function Header() {
           </div>
         </div>
       </header>
-
-      {/* MODAL DE SINCRONIZACIÓN */}
-      <SyncModal
-        isOpen={showSyncModal}
-        onClose={() => setShowSyncModal(false)}
-      />
     </>
   );
 }

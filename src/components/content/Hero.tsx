@@ -22,7 +22,8 @@ export function Hero({ item, onPlay, onMoreInfo }: HeroProps) {
   const { inList, toggle } = useWatchlist();
 
   const isInMyList = inList(item.id);
-  const match = item.match ?? 98;
+  // Solo mostramos coincidencia si Jellyfin tiene una nota real.
+  const match = item.match;
 
   // Autoplay video with slight delay
   useEffect(() => {
@@ -91,12 +92,11 @@ export function Hero({ item, onPlay, onMoreInfo }: HeroProps) {
         <div className="max-w-2xl space-y-4 sm:space-y-6">
           {/* Badges */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1.5 px-3 py-1 bg-netflix-red text-white text-xs font-black tracking-wider uppercase rounded">
-              TOP 10 EN PYFLIX
-            </span>
-            <span className="text-green-400 font-bold text-sm tracking-wide">
-              {match}% Coincidencia
-            </span>
+            {match !== undefined && (
+              <span className="text-green-400 font-bold text-sm tracking-wide">
+                {match}% Coincidencia
+              </span>
+            )}
             <span className="px-2 py-0.5 border border-white/30 text-xs text-neutral-300 font-semibold rounded">
               {item.rating}
             </span>
