@@ -6,17 +6,13 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
-  Menu, 
-  X, 
   Bell, 
-  User, 
   ChevronDown, 
   Home, 
   Tv, 
   Film, 
   Sparkles, 
   ListFilter, 
-  Settings, 
   RefreshCw 
 } from 'lucide-react';
 import { mockProfiles, type UserProfile } from '@/lib/mock-data';
@@ -27,7 +23,6 @@ export function Header() {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,7 +38,7 @@ export function Header() {
         setCurrentProfile(JSON.parse(saved));
       }
     } catch {
-      // fallback por defecto
+      // Fallback si falla localStorage
     }
 
     return () => window.removeEventListener('scroll', handleScroll);
@@ -147,4 +142,52 @@ export function Header() {
           <div className="relative">
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="flex items-center gap-1.5 p-1 rounded-lg hover:ring-2 hover:ring-white/20 transition-
+              className="flex items-center gap-1.5 p-1 rounded-lg hover:ring-2 hover:ring-white/20 transition-all"
+              aria-label="Menú de perfil"
+            >
+              <img
+                src={currentProfile.avatar}
+                alt={currentProfile.name}
+                className="w-8 h-8 rounded-md object-cover ring-1 ring-white/20"
+              />
+              <ChevronDown className={cn('w-3.5 h-3.5 text-zinc-400 transition-transform duration-200', showProfileMenu && 'rotate-180')} />
+            </button>
+
+            <AnimatePresence>
+              {showProfileMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl py-2 z-50 text-sm"
+                >
+                  <div className="px-3 py-2 border-b border-zinc-800 font-semibold text-zinc-200">
+                    {currentProfile.name}
+                  </div>
+                  {mockProfiles.map((profile) => (
+                    <button
+                      key={profile.id}
+                      onClick={() => handleSelectProfile(profile)}
+                      className="w-full text-left px-3 py-2 hover:bg-zinc-800 text-zinc-300 hover:text-white flex items-center gap-2"
+                    >
+                      <img src={profile.avatar} alt={profile.name} className="w-6 h-6 rounded" />
+                      {profile.name}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </header>
+
+      {/* MODAL DE SINCRONIZACIÓN */}
+      <SyncModal
+        isOpen={showSyncModal}
+        onClose={() => setShowSyncModal(false)}
+      />
+    </>
+  );
+}
+
+export default Header;
