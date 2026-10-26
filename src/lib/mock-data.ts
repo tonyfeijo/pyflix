@@ -84,8 +84,8 @@ export function getTopRated(): MediaItem[] {
 }
 
 export function getTop10(): MediaItem[] {
-  // Mejor valorados primero: con catalogo real no hay un ranking de popularidad.
-  return [...getMainCatalog()].sort((a, b) => (b.match || 0) - (a.match || 0)).slice(0, 10);
+  // Aleatorio: mezcla películas y series del catálogo real.
+  return [...getMainCatalog()].sort(() => Math.random() - 0.5).slice(0, 10);
 }
 
 export function getContinueWatching(profileId: string): MediaItem[] {

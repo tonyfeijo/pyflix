@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { MediaItem, Episode } from '@/lib/types';
 import { cn, formatDuration } from '@/lib/utils';
+import { saveContinueWatching, getContinueWatching } from '@/lib/progress';
 
 interface PlayerProps {
   media: MediaItem;
@@ -40,6 +41,39 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
 
   const subtitleTracks = episode?.subtitles ?? media.subtitles ?? [];
+
+  // Guardar progreso en localStorage periódicamente
+  useEffect(() => {
+    if (duration > 0 && currentTime > 10) {
+      saveContinueWatching({
+        mediaId: media.id,
+        profileId: 'default',
+        progress: Math.round((currentTime / duration) * 100),
+        currentEpisode: episode || undefined,
+        timestamp: Date.now(),
+      });
+    }
+  }, [currentTime, duration, media.id, episode]);
+
+  // Leer progreso guardado al montar
+  useEffect(() => {
+    const progress = getContinueWatching();
+    const saved = progress.find(p => p.mediaId === media.id);
+    if (saved && saved.progress > 5 && saved.progress < 95 && videoRef.current) {
+      const applySavedTime = () => {
+        if (videoRef.current && duration > 0) {
+          videoRef.current.currentTime = (saved.progress / 100) * duration;
+          setCurrentTime(videoRef.current.currentTime);
+        }
+        videoRef.current?.removeEventListener('loadedmetadata', applySavedTime);
+      };
+      videoRef.current.addEventListener('loadedmetadata', applySavedTime);
+      if (videoRef.current.readyState >= 2 && duration > 0) {
+        videoRef.current.currentTime = (saved.progress / 100) * duration;
+        setCurrentTime((saved.progress / 100) * duration);
+      }
+    }
+  }, [media.id]);
 
   // Hide controls after inactivity
   const resetControlsTimeout = useCallback(() => {

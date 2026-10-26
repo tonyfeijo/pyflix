@@ -40,7 +40,7 @@ export function Top10Row({ items, onPlay, onMoreInfo }: Top10RowProps) {
     <section className="px-4 md:px-8 pb-10 relative group/row" aria-label="Las 10 películas y series más populares hoy">
       <div className="flex items-center gap-3 mb-4">
         <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-          <span>Las 10 más populares hoy en España</span>
+          <span>Las 10 más populares de hoy</span>
           <span className="text-xs bg-netflix-red text-white font-extrabold px-2 py-0.5 rounded uppercase tracking-wider">
             TOP 10
           </span>

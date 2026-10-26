@@ -30,6 +30,7 @@ export interface MediaItem {
   isNew?: boolean;
   isTrending?: boolean;
   episodes?: Episode[];
+  progress?: number; // 0-100 para "continuar viendo"
   cast?: string[];
   director?: string;
 }

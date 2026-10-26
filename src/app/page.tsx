@@ -21,6 +21,7 @@ import {
 } from '@/lib/mock-data';
 import { useWatchlist } from '@/lib/watchlist';
 import { useCatalogVersion } from '@/lib/catalog-events';
+import { getContinueWatching } from '@/lib/progress';
 import type { MediaItem, Episode } from '@/lib/types';
 import { ListFilter } from 'lucide-react';
 
@@ -90,6 +91,21 @@ function HomeContent() {
     setCurrentMedia(null);
     setCurrentEpisode(null);
   };
+
+  const [continueWatching, setContinueWatching] = useState<MediaItem[]>([]);
+
+  // Leer progreso de "continuar viendo" al montar
+  useEffect(() => {
+    const saved = getContinueWatching();
+    const mediaIds = saved.map(s => s.mediaId);
+    // Buscar los MediaItem correspondientes en el catálogo principal
+    const allCatalog = getMainCatalog();
+    const matched = allCatalog.filter(m => mediaIds.includes(m.id)).map(m => ({
+      ...m,
+      progress: saved.find(s => s.mediaId === m.id)?.progress || 0,
+    }));
+    setContinueWatching(matched);
+  }, []);
 
   const handleNextEpisode = () => {
     if (currentMedia?.episodes && currentEpisode) {
@@ -285,6 +301,16 @@ function HomeContent() {
               <MovieRow
                 title="Mi lista"
                 items={myWatchlistItems}
+                onItemClick={handleOpenDetail}
+                onPlay={handlePlay}
+              />
+            )}
+
+            {/* Continuar viendo */}
+            {continueWatching.length > 0 && (
+              <MovieRow
+                title="Continuar viendo"
+                items={continueWatching}
                 onItemClick={handleOpenDetail}
                 onPlay={handlePlay}
               />

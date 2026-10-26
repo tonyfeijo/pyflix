@@ -1,0 +1,8 @@
+tunnel: <TU_ID>
+credentials-file: <TU_RUTA_A>.json
+ingress:
+  # Usa el subdominio gratuito que te da Cloudflare (ejemplo)
+  - hostname: pyflix-jellyfin-abc123.trycloudflare.com
+    service: http://localhost:8096
+  # Captura todo lo demas con 404
+  - service: http_status:404

@@ -44,3 +44,13 @@ next-env.d.ts
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+.vercel
+
+# binarios de tuneles y logs locales
+cloudflared.exe
+ngrok.exe
+ngrok.zip
+lt-url.txt
+sync-deploy.ps1
+config.yml
+
