@@ -246,3 +246,29 @@ dejarlos o moverlos fuera de las carpetas de bibliotecas.
 | Una serie sale con 0 episodios | La biblioteca estaba mal tipada al escanear; refresca esa serie (ver sección 6). |
 | Los títulos nuevos no aparecen | La firma del catálogo no cambió, la pestaña no está visible o han pasado menos de 60 s; espera un poco o recarga la página. |
 | El video no reproduce | Códec no soportado por el navegador (p. ej. MKV/H.265). Jellyfin puede transcodificar si lo habilitas. |
+
+---
+
+## 8. Acceso publico con Tailscale Funnel
+
+La web de Vercel necesita una URL publica para llegar a Jellyfin. Se usa
+**Tailscale Funnel**, que da una URL fija y gratuita sin comprar dominio.
+
+- URL publica: `https://jellyfin.tail331bc5.ts.net`
+- Variable en Vercel (Production): `JELLYFIN_URL=https://jellyfin.tail331bc5.ts.net`
+- El Funnel apunta a `http://127.0.0.1:8096` y se guarda en el estado de
+  `tailscaled`, por lo que sobrevive a reinicios del equipo.
+
+Comandos utiles:
+
+```powershell
+& 'C:\Program Files\Tailscale\tailscale.exe' funnel status
+& 'C:\Program Files\Tailscale\tailscale.exe' funnel --bg 8096
+```
+
+Si el Funnel se desactiva, ejecuta `.\start-pyflix-tunnel.ps1`, que comprueba
+Tailscale y Jellyfin y vuelve a publicar el puerto 443.
+
+> Nota: Cloudflare Tunnel no es viable con un subdominio gratuito de dnsexit
+> (`pyflix.2bd.net`): el plan gratuito de Cloudflare no admite zonas de
+> subdominio (error 1116). Se descarto esa via.
