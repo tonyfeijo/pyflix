@@ -11,6 +11,7 @@ import {
 import type { MediaItem, Episode } from '@/lib/types';
 import { cn, formatDuration } from '@/lib/utils';
 import { saveContinueWatching, getContinueWatching } from '@/lib/progress';
+import { saveSyncedMovies, setSyncedSignature } from '@/lib/synced-catalog';
 
 interface PlayerProps {
   media: MediaItem;
@@ -38,7 +39,21 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
   const [quality, setQuality] = useState('Auto');
   /** Índice de la pista de subtítulos activa; -1 = desactivados. */
   const [activeSubtitle, setActiveSubtitle] = useState(-1);
+  /**
+   * URL corregida tras volver a importar el catálogo. La URL guardada puede
+   * apuntar a un túnel antiguo; cuando falla, se pide el catálogo otra vez y se
+   * reproduce con la dirección buena sin recargar la página.
+   */
+  const [srcOverride, setSrcOverride] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  /** true si el vídeo lleva demasiado tiempo sin dar señal de vida. */
+  const [takingTooLong, setTakingTooLong] = useState(false);
+  const [repairing, setRepairing] = useState(false);
+  /** Cambiarlo remonta el <video> y fuerza una carga limpia. */
+  const [reloadKey, setReloadKey] = useState(0);
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const videoSrc = srcOverride ?? episode?.videoUrl ?? media.videoUrl;
 
   const subtitleTracks = episode?.subtitles ?? media.subtitles ?? [];
 
@@ -98,6 +113,8 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
   // Video event handlers
   const handleLoadedMetadata = () => {
     if (videoRef.current) setDuration(videoRef.current.duration);
+    setVideoError(null);
+    setTakingTooLong(false);
 
     // Elige subtítulo automáticamente: español si existe; si solo hay una
     // pista, esa; si hay varias sin español, se quedan apagados.
@@ -126,6 +143,77 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
   useEffect(() => {
     setActiveSubtitle(-1);
   }, [episode?.id, media.id]);
+
+  // Al cambiar de título, se parte de la URL tal cual viene del catálogo.
+  useEffect(() => {
+    setSrcOverride(null);
+    setVideoError(null);
+    setTakingTooLong(false);
+    setReloadKey(0);
+  }, [episode?.id, media.id]);
+
+  /**
+   * Vigila que el vídeo empiece. Si en 20 s no ha llegado ni los metadatos,
+   * se muestra un aviso con botón en vez de un giro infinito.
+   */
+  useEffect(() => {
+    if (!videoSrc) return;
+    setTakingTooLong(false);
+    const timer = setTimeout(() => {
+      const video = videoRef.current;
+      if (video && video.readyState < 1) setTakingTooLong(true);
+    }, 20000);
+    return () => clearTimeout(timer);
+  }, [videoSrc, reloadKey]);
+
+  /** Mensaje entendible a partir del error real del <video>. */
+  const describeVideoError = (video: HTMLVideoElement | null): string => {
+    switch (video?.error?.code) {
+      case 1:
+        return 'La carga del vídeo se canceló.';
+      case 2:
+        return 'Error de red: no se pudo descargar el vídeo desde tu servidor.';
+      case 3:
+        return 'El archivo está dañado o usa un códec que este navegador no puede decodificar.';
+      case 4:
+        return 'No se puede reproducir: el servidor de vídeo no responde o el formato no es compatible con este navegador.';
+      default:
+        return 'No se pudo reproducir el vídeo.';
+    }
+  };
+
+  /**
+   * Reintento inteligente: vuelve a importar el catálogo (por si el túnel cambió
+   * de dirección) y reproduce con la URL nueva. También arregla el catálogo
+   * guardado en este navegador, así que el resto de la app se corrige igual.
+   */
+  const repairPlayback = useCallback(async () => {
+    setRepairing(true);
+    setVideoError(null);
+    setTakingTooLong(false);
+    try {
+      const infoResponse = await fetch('/api/jellyfin/sync', { cache: 'no-store' });
+      const info = await infoResponse.json();
+      const syncResponse = await fetch('/api/jellyfin/sync', { method: 'POST' });
+      const payload = await syncResponse.json();
+
+      if (payload?.success && Array.isArray(payload.movies)) {
+        saveSyncedMovies(payload.movies, 'replace');
+        if (info?.success && info.signature) setSyncedSignature(info.signature);
+
+        const fresh = (payload.movies as MediaItem[]).find((item) => item.id === media.id);
+        const url = episode
+          ? fresh?.episodes?.find((item) => item.id === episode.id)?.videoUrl
+          : fresh?.videoUrl;
+        if (url) setSrcOverride(url);
+      }
+    } catch {
+      /* Sin red o servidor caído: se reintenta con lo que haya. */
+    } finally {
+      setRepairing(false);
+      setReloadKey((key) => key + 1);
+    }
+  }, [media.id, episode]);
 
   const handleTimeUpdate = () => {
     if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
@@ -257,16 +345,18 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
       {/* Video Area */}
       <div className="relative flex-1 flex items-center justify-center overflow-hidden">
         <video
+          key={reloadKey}
           ref={videoRef}
           className="w-full h-full object-contain"
           onLoadedMetadata={handleLoadedMetadata}
           onTimeUpdate={handleTimeUpdate}
           onEnded={handleEnded}
+          onError={() => setVideoError(describeVideoError(videoRef.current))}
           onClick={handlePlayPause}
           onDoubleClick={toggleFullscreen}
           playsInline
           autoPlay={autoPlay}
-          src={episode?.videoUrl || media.videoUrl}
+          src={videoSrc}
         >
           {subtitleTracks.map((track, index) => (
             <track
@@ -280,10 +370,32 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
           ))}
         </video>
         
-        {/* Loading placeholder */}
-        {!duration && (
-          <div className="absolute inset-0 flex items-center justify-center bg-netflix-black">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-netflix-gray border-t-netflix-red" />
+        {/* Carga, error y reintento */}
+        {(!duration || videoError || takingTooLong) && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-netflix-black px-6 text-center">
+            {videoError || takingTooLong ? (
+              <>
+                <p className="max-w-md text-sm text-netflix-lightGray">
+                  {videoError ??
+                    'Tu servidor de vídeo está tardando en responder. Puede que el túnel haya cambiado de dirección.'}
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={repairPlayback}
+                    disabled={repairing}
+                    className="btn-primary disabled:opacity-60"
+                  >
+                    {repairing ? 'Reconectando…' : 'Reintentar'}
+                  </button>
+                  <button type="button" onClick={onClose} className="btn-secondary">
+                    Cerrar
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-netflix-gray border-t-netflix-red" />
+            )}
           </div>
         )}
 

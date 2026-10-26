@@ -58,15 +58,32 @@ function configErrorResponse() {
 }
 
 /**
- * Firma compacta del catálogo: número de títulos + fecha del último añadido.
- * Si cambia, hay contenido nuevo (o borrado) en Jellyfin.
+ * Servidor público que se está usando (normalmente el host del túnel).
+ *
+ * Va dentro de la firma a propósito: las URLs de vídeo que se guardan en el
+ * navegador apuntan a ese host. Si el túnel cambia, la firma cambia y todos los
+ * navegadores vuelven a importar el catálogo. Sin esto, un navegador con
+ * catálogo antiguo se queda intentando cargar el vídeo desde un túnel muerto:
+ * el reproductor gira para siempre y nunca se recupera solo.
  */
-function catalogSignature(total: number, items: JellyfinItem[]): string {
+function serverTag(config: JellyfinConfig): string {
+  try {
+    return new URL(config.url).host;
+  } catch {
+    return config.url;
+  }
+}
+
+/**
+ * Firma compacta del catálogo: número de títulos + fecha del último añadido
+ * + servidor público.
+ */
+function catalogSignature(total: number, items: JellyfinItem[], tag: string): string {
   let latest = '';
   for (const item of items) {
     if (item.DateCreated && item.DateCreated > latest) latest = item.DateCreated;
   }
-  return `${total}:${latest}`;
+  return `${total}:${latest}:${tag}`;
 }
 
 function connectionErrorResponse(error: unknown) {
@@ -121,7 +138,8 @@ export async function GET() {
       success: true,
       count: total,
       latest,
-      signature: `${total}:${latest}`,
+      server: serverTag(config),
+      signature: `${total}:${latest}:${serverTag(config)}`,
     });
   } catch (error) {
     return connectionErrorResponse(error);
@@ -170,7 +188,8 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       count: movies.length,
-      signature: catalogSignature(total, items),
+      server: serverTag(config),
+      signature: catalogSignature(total, items, serverTag(config)),
       movies,
     });
   } catch (error) {
