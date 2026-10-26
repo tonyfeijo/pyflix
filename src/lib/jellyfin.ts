@@ -2,7 +2,13 @@ import type { Episode, MediaItem, SubtitleTrack } from '@/lib/types';
 
 export interface JellyfinConfig {
   url: string;
-  apiKey: string;
+  /**
+   * Token con el que se habla con Jellyfin: el de un usuario limitado si hay
+   * credenciales configuradas, o la API key como último recurso.
+   */
+  token: string;
+  /** true si el token es de un usuario sin privilegios (lo recomendado). */
+  usingUserSession: boolean;
 }
 
 /**
@@ -15,15 +21,115 @@ const DEFAULT_JELLYFIN_URL = 'https://jellyfin.tail331bc5.ts.net';
 const isHttpUrl = (value: string): boolean => /^https?:\/\/[^\s]+$/i.test(value);
 
 /**
- * Lee la configuración desde variables de entorno (solo servidor).
- * Nunca uses NEXT_PUBLIC_* aquí: la API key no debe llegar al navegador.
+ * Credenciales de un usuario de Jellyfin sin privilegios de administrador.
+ *
+ * Es la forma recomendada: el token que viaja al navegador (dentro de las URLs
+ * de vídeo) no puede borrar archivos ni cambiar la configuración del servidor.
  */
-export function getJellyfinConfig(): JellyfinConfig | null {
-  const url = findJellyfinUrl();
-  const apiKey = findJellyfinApiKey();
-  if (!url || !apiKey) return null;
-  return { url: url.replace(/\/+$/, ''), apiKey };
+function findJellyfinCredentials(): { username: string; password: string } | null {
+  const username = (process.env.JELLYFIN_USER ?? process.env.JELLYFIN_USERNAME ?? '').trim();
+  const password = process.env.JELLYFIN_PASSWORD ?? process.env.JELLYFIN_PW ?? '';
+  if (!username || !password) return null;
+  return { username, password };
 }
+
+/** Token ya emitido para el usuario limitado (evita autenticar en cada arranque). */
+function findJellyfinUserToken(): string | undefined {
+  const value = (process.env.JELLYFIN_USER_TOKEN ?? '').trim();
+  return value && !isHttpUrl(value) ? value : undefined;
+}
+
+/** Cabecera que Jellyfin exige para autenticar por usuario. */
+const AUTH_HEADER =
+  'MediaBrowser Client="PyFlix", Device="Vercel", DeviceId="pyflix-server", Version="1.0.0"';
+
+/** Vida del token en memoria; si Jellyfin lo revoca, se renueva solo. */
+const SESSION_TTL_MS = 30 * 60 * 1000;
+
+let cachedSession: { key: string; config: JellyfinConfig; expiresAt: number } | null = null;
+let pendingSession: Promise<JellyfinConfig | null> | null = null;
+
+/** Descarta el token cacheado (p. ej. tras un 401). */
+export function invalidateJellyfinSession(): void {
+  cachedSession = null;
+}
+
+async function createSession(): Promise<JellyfinConfig | null> {
+  const url = findJellyfinUrl().replace(/\/+$/, '');
+
+  // 1) Token de usuario ya emitido: no hace falta autenticar (ni enviar la
+  //    contraseña) en cada petición. Es el modo preferido en producción.
+  const userToken = findJellyfinUserToken();
+  if (userToken) {
+    return { url, token: userToken, usingUserSession: true };
+  }
+
+  const credentials = findJellyfinCredentials();
+  if (!credentials) {
+    const apiKey = findJellyfinApiKey();
+    if (!apiKey) return null;
+    return { url, token: apiKey, usingUserSession: false };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${url}/Users/AuthenticateByName`, {
+      method: 'POST',
+      headers: {
+        'X-Emby-Authorization': AUTH_HEADER,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ Username: credentials.username, Pw: credentials.password }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch (error) {
+    const cause = (error as { cause?: { code?: string; message?: string } }).cause;
+    const detail = [cause?.code, cause?.message].filter(Boolean).join(' ');
+    throw new Error(
+      `No se pudo conectar con ${url}/Users/AuthenticateByName${detail ? ` (${detail})` : ''}`
+    );
+  }
+
+  if (!res.ok) {
+    throw new Error(
+      `Jellyfin rechazó las credenciales de "${credentials.username}" (${res.status})`
+    );
+  }
+
+  const data = (await res.json()) as { AccessToken?: string };
+  if (!data.AccessToken) throw new Error('Jellyfin no devolvió un token de acceso');
+
+  return { url, token: data.AccessToken, usingUserSession: true };
+}
+
+/**
+ * Configuración lista para usar. Si hay credenciales de usuario se autentica con
+ * ellas y cachea el token en memoria para no pedir uno nuevo en cada petición.
+ */
+export async function getJellyfinSession(): Promise<JellyfinConfig | null> {
+  const url = findJellyfinUrl().replace(/\/+$/, '');
+  const key = `${url}|${findJellyfinCredentials()?.username ?? 'api-key'}`;
+
+  if (cachedSession && cachedSession.key === key && cachedSession.expiresAt > Date.now()) {
+    return cachedSession.config;
+  }
+  if (!pendingSession) {
+    pendingSession = createSession()
+      .then((config) => {
+        if (config) {
+          cachedSession = { key, config, expiresAt: Date.now() + SESSION_TTL_MS };
+        }
+        return config;
+      })
+      .finally(() => {
+        pendingSession = null;
+      });
+  }
+  return pendingSession;
+}
+
 
 export interface JellyfinDiagnostics {
   hasUrl: boolean;
@@ -31,6 +137,8 @@ export interface JellyfinDiagnostics {
   /** true si no hay JELLYFIN_URL válida y se usa la URL pública por defecto. */
   usingDefaultUrl: boolean;
   hasApiKey: boolean;
+  /** true si hay usuario y contraseña de Jellyfin configurados (recomendado). */
+  hasUserCredentials: boolean;
   /** true si JELLYFIN_URL parece contener la API key (valores cruzados). */
   urlLooksLikeApiKey: boolean;
   /** true si la URL está en el campo de la clave y la clave en el de la URL. */
@@ -48,6 +156,7 @@ export function jellyfinDiagnostics(): JellyfinDiagnostics {
     urlValid,
     usingDefaultUrl: !urlValid,
     hasApiKey: Boolean(apiKey),
+    hasUserCredentials: Boolean(findJellyfinUserToken() || findJellyfinCredentials()),
     urlLooksLikeApiKey: Boolean(rawUrl && !isHttpUrl(rawUrl) && /^[a-f0-9]{24,}$/i.test(rawUrl)),
     valuesSwapped: Boolean(
       rawUrl && !isHttpUrl(rawUrl) && apiKey && isHttpUrl(apiKey)
@@ -98,7 +207,7 @@ function findJellyfinApiKey(): string | undefined {
   // JELLYFIN_TOKEN, JELLYFIN_KEY, "JELLYFIN_API_KEY " (con espacio), etc.
   // Descarta valores que en realidad sean una URL (campos cruzados).
   const candidates = jellyfinEnvNamesMatching(/(api[_\-\s]?key|apikey|key|token)/i).filter(
-    (name) => !/(url|host|server)/i.test(name)
+    (name) => !/(url|host|server)/i.test(name) && !/USER_TOKEN/i.test(name)
   );
 
   for (const name of candidates) {
@@ -169,16 +278,33 @@ export const JELLYFIN_FIELDS = [
 /** Petición autenticada a la API de Jellyfin (lado servidor). */
 export async function jellyfinFetch<T>(
   config: JellyfinConfig,
-  path: string
+  path: string,
+  allowRetry = true
 ): Promise<T> {
-  const res = await fetch(`${config.url}${path}`, {
-    headers: {
-      'X-Emby-Token': config.apiKey,
-      Accept: 'application/json',
-    },
-    cache: 'no-store',
-    signal: AbortSignal.timeout(20000),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${config.url}${path}`, {
+      headers: {
+        'X-Emby-Token': config.token,
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch (error) {
+    const cause = (error as { cause?: { code?: string; message?: string } }).cause;
+    const detail = [cause?.code, cause?.message].filter(Boolean).join(' ');
+    throw new Error(
+      `No se pudo conectar con ${config.url}${detail ? ` (${detail})` : ''}`
+    );
+  }
+
+  // Si el token caducó o se revocó, se pide uno nuevo y se reintenta una vez.
+  if (res.status === 401 && allowRetry && config.usingUserSession) {
+    invalidateJellyfinSession();
+    const fresh = await getJellyfinSession();
+    if (fresh) return jellyfinFetch(fresh, path, false);
+  }
 
   if (!res.ok) {
     throw new Error(`Jellyfin respondió ${res.status} en ${path}`);
@@ -207,7 +333,7 @@ export function imageProxyUrl(
 export function streamUrl(config: JellyfinConfig, itemId: string): string {
   const params = new URLSearchParams({
     static: 'true',
-    api_key: config.apiKey,
+    api_key: config.token,
   });
   return `${config.url}/Videos/${itemId}/stream?${params.toString()}`;
 }

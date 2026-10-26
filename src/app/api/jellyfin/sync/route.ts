@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import {
-  getJellyfinConfig,
+  getJellyfinSession,
   jellyfinDiagnostics,
   jellyfinFetch,
   mapJellyfinItem,
@@ -27,7 +27,7 @@ function configErrorResponse() {
   const diag = jellyfinDiagnostics();
   const missing = [
     diag.hasUrl ? null : 'JELLYFIN_URL',
-    diag.hasApiKey ? null : 'JELLYFIN_API_KEY',
+    diag.hasUserCredentials || diag.hasApiKey ? null : 'JELLYFIN_USER y JELLYFIN_PASSWORD',
   ].filter((name): name is string => Boolean(name));
 
   let message: string;
@@ -81,12 +81,30 @@ function connectionErrorResponse(error: unknown) {
   );
 }
 
+/** Falla al autenticar como usuario limitado (credenciales incorrectas o red). */
+function sessionErrorResponse(error: unknown) {
+  console.error('Error al autenticar con Jellyfin:', error);
+  const detail = error instanceof Error ? error.message : 'Error desconocido';
+  return NextResponse.json(
+    {
+      success: false,
+      message: `No se pudo autenticar con el usuario de Jellyfin. Revisa JELLYFIN_USER y JELLYFIN_PASSWORD. Detalle: ${detail}`,
+    },
+    { status: 502 }
+  );
+}
+
 /**
  * Estado del catálogo (consulta baratísima, 1 elemento).
  * El navegador la usa para saber si hay que reimportar al abrir PyFlix.
  */
 export async function GET() {
-  const config = getJellyfinConfig();
+  let config;
+  try {
+    config = await getJellyfinSession();
+  } catch (error) {
+    return sessionErrorResponse(error);
+  }
   if (!config) return configErrorResponse();
 
   try {
@@ -115,7 +133,12 @@ export async function GET() {
  * (antes se cortaba en 300 títulos).
  */
 export async function POST() {
-  const config = getJellyfinConfig();
+  let config;
+  try {
+    config = await getJellyfinSession();
+  } catch (error) {
+    return sessionErrorResponse(error);
+  }
   if (!config) return configErrorResponse();
 
   try {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getJellyfinConfig } from '@/lib/jellyfin';
+import { getJellyfinSession } from '@/lib/jellyfin';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +11,7 @@ const ID_PATTERN = /^[a-f0-9]{32}$/i;
  * y para evitar tener que configurar dominios remotos en next.config.js.
  */
 export async function GET(request: NextRequest) {
-  const config = getJellyfinConfig();
+  const config = await getJellyfinSession();
   if (!config) {
     return new NextResponse('Jellyfin no configurado', { status: 400 });
   }
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const upstream = await fetch(`${config.url}${path}`, {
-      headers: { 'X-Emby-Token': config.apiKey },
+      headers: { 'X-Emby-Token': config.token },
       cache: 'no-store',
     });
 

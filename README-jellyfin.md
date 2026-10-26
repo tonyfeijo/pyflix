@@ -272,3 +272,37 @@ Tailscale y Jellyfin y vuelve a publicar el puerto 443.
 > Nota: Cloudflare Tunnel no es viable con un subdominio gratuito de dnsexit
 > (`pyflix.2bd.net`): el plan gratuito de Cloudflare no admite zonas de
 > subdominio (error 1116). Se descarto esa via.
+
+### Nota (26/10/2026): Tailscale Funnel no es fiable
+
+Se probo Tailscale Funnel (`jellyfin.tail331bc5.ts.net`): funciona a ratos porque
+Tailscale publica **dos IPs de entrada** y una de ellas (`199.38.181.54`) no
+completa el handshake TLS. Los clientes que caen en esa IP reciben
+`ECONNRESET`/`Broken pipe`, asi que no sirve para produccion.
+
+Configuracion vigente: **tunel rapido de Cloudflare** (`*.trycloudflare.com`)
+y `start-pyflix-tunnel.ps1` para relanzarlo. La solucion definitiva es comprar
+un dominio y crear un tunel con nombre propio.
+
+## 9. Usuario limitado de Jellyfin (seguridad)
+
+PyFlix **no usa la API key de administrador** para leer el catalogo ni para
+reproducir. Se autentica con un usuario sin privilegios:
+
+- Usuario: `pyflix` (sin permisos de administrador, sin borrado, solo las
+  bibliotecas de Peliculas, Series, Documentales, Cortos y Video clips).
+- Variables en Vercel: `JELLYFIN_USER`, `JELLYFIN_PASSWORD` y
+  `JELLYFIN_USER_TOKEN` (token ya emitido; evita autenticar en cada peticion).
+- Las URLs de video llevan ese token, no la clave de administrador, de modo que
+  quien copie una URL no puede borrar archivos ni cambiar la configuracion.
+
+Si el token se revoca, se regenera con:
+
+```powershell
+$body = @{ Username = 'pyflix'; Pw = '<contrasena>' } | ConvertTo-Json
+Invoke-RestMethod -Uri 'http://127.0.0.1:8096/Users/AuthenticateByName' -Method Post `
+  -Headers @{ 'X-Emby-Authorization' = 'MediaBrowser Client="PyFlixWeb", Device="Vercel", DeviceId="pyflix-web", Version="1.0.0"' } `
+  -ContentType 'application/json' -Body $body | Select-Object -ExpandProperty AccessToken
+```
+
+y se actualiza `JELLYFIN_USER_TOKEN` en Vercel.
