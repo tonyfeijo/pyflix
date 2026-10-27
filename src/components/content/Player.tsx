@@ -10,8 +10,12 @@ import {
 } from 'lucide-react';
 import type { MediaItem, Episode } from '@/lib/types';
 import { cn, formatDuration } from '@/lib/utils';
-import { saveContinueWatching, getContinueWatching } from '@/lib/progress';
+import { saveContinueWatching, getContinueWatching, removeContinueWatching } from '@/lib/progress';
 import { saveSyncedMovies, setSyncedSignature } from '@/lib/synced-catalog';
+import { getMainCatalog } from '@/lib/mock-data';
+import { findNextUp, type NextUpSuggestion } from '@/lib/sequels';
+import { PlayIntro } from '@/components/content/PlayIntro';
+import { UpNextModal } from '@/components/content/UpNextModal';
 
 interface PlayerProps {
   media: MediaItem;
@@ -19,10 +23,12 @@ interface PlayerProps {
   onClose: () => void;
   onNextEpisode?: () => void;
   onPreviousEpisode?: () => void;
+  /** Reproduce otro título (secuela o recomendación) al terminar. */
+  onPlayNext?: (item: MediaItem) => void;
   autoPlay?: boolean;
 }
 
-export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpisode, autoPlay = true }: PlayerProps) {
+export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpisode, onPlayNext, autoPlay = true }: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -51,6 +57,10 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
   const [repairing, setRepairing] = useState(false);
   /** Cambiarlo remonta el <video> y fuerza una carga limpia. */
   const [reloadKey, setReloadKey] = useState(0);
+  /** Animación de entrada (una vez por sesión del navegador). */
+  const [showIntro, setShowIntro] = useState(false);
+  /** Qué proponer al terminar: secuela o título del mismo género. */
+  const [nextUp, setNextUp] = useState<NextUpSuggestion | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
 
   const videoSrc = srcOverride ?? episode?.videoUrl ?? media.videoUrl;
@@ -150,7 +160,44 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
     setVideoError(null);
     setTakingTooLong(false);
     setReloadKey(0);
+    setNextUp(null);
   }, [episode?.id, media.id]);
+
+  // Animación de entrada: solo la primera reproducción de cada sesión.
+  useEffect(() => {
+    let corresponde = false;
+    try {
+      if (!sessionStorage.getItem('pyflix_intro_seen')) {
+        sessionStorage.setItem('pyflix_intro_seen', '1');
+        corresponde = true;
+      }
+    } catch {
+      /* almacenamiento bloqueado: se reproduce sin intro */
+    }
+    if (!corresponde) return;
+
+    setShowIntro(true);
+    // El vídeo sigue cargando por detrás, pero sin sonido ni imagen.
+    videoRef.current?.pause();
+  }, []);
+
+  /** Fin de la animación: se entra en el vídeo. */
+  const handleIntroDone = useCallback(() => {
+    setShowIntro(false);
+    if (autoPlay) void videoRef.current?.play().catch(() => {});
+  }, [autoPlay]);
+
+  /** Reproduce la sugerencia: secuela o título del mismo género. */
+  const handlePlayNext = useCallback(
+    (item: MediaItem) => {
+      if (onPlayNext) {
+        onPlayNext(item);
+        return;
+      }
+      window.location.href = `/watch/${item.id}?play=1`;
+    },
+    [onPlayNext]
+  );
 
   /**
    * Vigila que el vídeo empiece. Si en 20 s no ha llegado ni los metadatos,
@@ -221,7 +268,30 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
 
   const handleEnded = () => {
     setIsPlaying(false);
-    onNextEpisode?.();
+
+    // Si la película se termina, deja de tener sentido en "Continuar viendo".
+    if (!episode) removeContinueWatching(media.id);
+
+    const posicion = episode && media.episodes
+      ? media.episodes.findIndex((item) => item.id === episode.id)
+      : -1;
+    const haySiguienteEpisodio = posicion >= 0 && Boolean(
+      media.episodes && posicion < media.episodes.length - 1
+    );
+
+    // Serie con más episodios: sigue con el siguiente, como hasta ahora.
+    if (haySiguienteEpisodio) {
+      onNextEpisode?.();
+      return;
+    }
+
+    // Película (o último episodio de la serie): se propone qué ver después.
+    const sugerencia = findNextUp(media, getMainCatalog());
+    if (sugerencia) {
+      setNextUp(sugerencia);
+    } else {
+      onNextEpisode?.();
+    }
   };
 
   const handlePlayPause = () => {
@@ -355,7 +425,7 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
           onClick={handlePlayPause}
           onDoubleClick={toggleFullscreen}
           playsInline
-          autoPlay={autoPlay}
+          autoPlay={autoPlay && !showIntro}
           src={videoSrc}
         >
           {subtitleTracks.map((track, index) => (
@@ -655,7 +725,7 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
 
         {/* Next Episode Countdown */}
         <AnimatePresence>
-          {!isPlaying && duration > 0 && currentTime >= duration - 1 && onNextEpisode && (
+          {!isPlaying && duration > 0 && currentTime >= duration - 1 && episode && onNextEpisode && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -682,6 +752,22 @@ export function Player({ media, episode, onClose, onNextEpisode, onPreviousEpiso
           )}
         </AnimatePresence>
       </div>
+
+      {/* Animación de entrada con arpegio de arpa */}
+      {showIntro && (
+        <PlayIntro title={episode?.title || media.title} onDone={handleIntroDone} />
+      )}
+
+      {/* Ventana de "a continuación" al terminar */}
+      <AnimatePresence>
+        {nextUp && (
+          <UpNextModal
+            suggestion={nextUp}
+            onPlay={handlePlayNext}
+            onDismiss={() => setNextUp(null)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

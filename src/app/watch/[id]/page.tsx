@@ -22,8 +22,15 @@ export default function WatchPage() {
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(1);
+  /** true si se llegó con ?play=1 (viene de "Ver siguiente"). */
+  const [autoStart, setAutoStart] = useState(false);
   // Si el auto-sync termina después de abrir esta página, se resuelve el título.
   const catalogVersion = useCatalogVersion();
+
+  // Se lee después de montar para no romper el render del servidor.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('play') === '1') setAutoStart(true);
+  }, []);
 
   useEffect(() => {
     const found = getMediaById(id);
@@ -38,6 +45,16 @@ export default function WatchPage() {
       setNotFound(true);
     }
   }, [id, catalogVersion]);
+
+  // Arranque automático al llegar desde "Ver siguiente".
+  useEffect(() => {
+    if (!autoStart || !media) return;
+    if (media.type === 'series' && media.episodes && media.episodes.length > 0) {
+      setCurrentEpisode(media.episodes[0]);
+    }
+    setShowPlayer(true);
+    setAutoStart(false);
+  }, [autoStart, media]);
 
   if (!media) {
     if (!notFound) {
@@ -389,6 +406,7 @@ export default function WatchPage() {
         onClose={handleClosePlayer}
         onNextEpisode={handleNextEpisode}
         onPreviousEpisode={handlePreviousEpisode}
+        onPlayNext={(item) => router.push(`/watch/${item.id}?play=1`)}
         autoPlay
       />
     )}
