@@ -54,5 +54,6 @@ lt-url.txt
 sync-deploy.ps1
 config.yml
 
-start-pyflix-tunnel.ps1
+# estado local del tunel (cambia en cada arranque)
+tunnel-url.txt
 
